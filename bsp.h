@@ -209,7 +209,7 @@ typedef struct bspfile {
 	int			*texture_indexes;
 	int			*lightmap_indexes;
 	patchlist   **tesselpatches;
-	face		**drawfaces;
+	int			*drawfaces;
 	int			numfaces;
 	int			*visitedfaces;
 } bspfile;

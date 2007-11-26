@@ -6,6 +6,7 @@ float angles[2], origin[3] = {0,1,0};
 float width, height, aspect;
 bspfile *bsp;
 
+float dir = 1;
 int moving = 0;
 
 static void reshape(int w, int h) {
@@ -27,9 +28,9 @@ static void display(void) {
 	glColor3d(1, 1, 1);
 
 	if (moving) {
-		origin[0] += 0.1 * cosd(angles[0] / 2);
-		origin[1] += 0.1 * tand(angles[1] / 5);
-		origin[2] += 0.1 * sind(angles[0] / 2);
+		origin[0] += dir * 0.1 * cosd(angles[0] / 2);
+		origin[1] += dir * 0.1 * tand(angles[1] / 5);
+		origin[2] += dir * 0.1 * sind(angles[0] / 2);
 		bsp_calculatevis(bsp, origin);
 	}
 
@@ -69,7 +70,25 @@ static void key(unsigned char key, int x, int y) {
 	if (key == 27) exit(0);
 	if (key == 'd') angles[0] += 10;
 	if (key == 'a') angles[0] -= 10;
+	if (key == 's') {
+		dir = -1;
+		moving = 1;
+	}
+	if (key == 'w') {
+		dir = 1;
+		moving = 1;
+	}
 }
+
+static void keyup(unsigned char key, int x, int y) {
+	if (key == 's') {
+		moving = 0;
+	}
+	if (key == 'w') {
+		moving = 0;
+	}
+}
+
 
 static void mousebutton(int button, int state, int x, int y) {
 	if (button == GLUT_RIGHT_BUTTON) {
@@ -88,6 +107,7 @@ static void init_gl() {
 	glutReshapeFunc(reshape);
 	glutPassiveMotionFunc(mouse);
 	glutKeyboardFunc(key);
+	glutKeyboardUpFunc(keyup);
 	glutMouseFunc(mousebutton);
 
 	/* Initialize GL extensions */
@@ -126,7 +146,7 @@ static void init_gl() {
 }
 
 static void init_bsp() {
-	bsp = bsp_load("maps/pdmq3paper2.bsp");
+	bsp = bsp_load("test1.bsp");
 	if (!bsp) {
 		exit(1);
 	}

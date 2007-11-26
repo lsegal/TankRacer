@@ -18,6 +18,17 @@ static void bsp_point_scwivel(float vert[3]) {
 	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
 }
 
+static void bsp_fix_bounding_box(int *box, int size) {
+	int i;
+	float tmp;
+	for (i = 0; i < size; i++) box[i] /= BSP_SCALE;
+	if (size == 3) {
+		tmp = box[1];
+		box[1] = box[2];
+		box[2] = -tmp;
+	}
+}
+
 static void bsp_vertex_scale(vertex *vert, float scale, vertex *out) {
 	int i;
 	
@@ -90,7 +101,7 @@ void bsp_draw_faces(bspfile *bsp) {
 	glPushAttrib(GL_TEXTURE_BIT);
 
 	for (i = 0; i < bsp->numfaces; i++) {
-		cface = bsp->drawfaces[i];
+		cface = &bsp->data.faces[bsp->drawfaces[i]];
 
 		if (cface->texture != -1) {
 			glBindTexture(GL_TEXTURE_2D, bsp->texture_indexes[cface->texture]);
@@ -119,7 +130,7 @@ void bsp_draw_faces(bspfile *bsp) {
 				bsp_draw_mesh(bsp, cface);
 				break;
 			case FACE_PATCH:
-				bsp_draw_patch(bsp, bsp->tesselpatches[i]);
+				bsp_draw_patch(bsp, bsp->tesselpatches[bsp->drawfaces[i]]);
 				break;
 		}
 
@@ -142,31 +153,30 @@ void bsp_draw_faces(bspfile *bsp) {
 }
 
 static int bsp_findleaf(bspfile *bsp, float origin[3]) {
-	int i = 0, n = 0;
+	int i = 0, n;
 	float dist;
 	node *cnode;
 	plane *cplane;
 
-	while (i >= 0) {
+	for (n = 0; n < bsp->data.n_nodes; n++) {
 		cnode  = &bsp->data.nodes[i];
+		if (cnode->plane < 0) printf("ERRROR!\n");
 		cplane = &bsp->data.planes[cnode->plane];
 
-		dist = vec3f_dot(cplane->normal, origin) + cplane->dist;
+		dist = vec3f_dot(cplane->normal, origin) - cplane->dist;
 
-		printf("In node %d: children: (%d, %d)\n", i, cnode->front, cnode->back);
-
-		if (dist >= 0)  { /* camera lies in front of plane */
+		if (dist > 0)  { /* camera lies in front of plane */
 			i = cnode->front;
 		}
 		else {			/* camera lies in back of plane */
 			i = cnode->back;
 		}
 
-		/* We've checked all nodes, we're in an infinite loop */
-		if (++n > bsp->data.n_nodes) return i;
+		if (i < 0) return ~i;
 	}
 
-	return ~i;
+	printf("OVERFLOW\n");
+	return 0;
 }
 
 static int bsp_cluster_visible(bspfile *bsp, int visCluster, int testCluster) {
@@ -182,10 +192,9 @@ void bsp_calculatevis(bspfile *bsp, float origin[3]) {
 	bsp->numfaces = 0;
 	memset(bsp->visitedfaces, 0, sizeof(int) * bsp->data.n_faces);
 	
-	//l = bsp_findleaf(bsp, origin);
-	l = 0;
+	l = bsp_findleaf(bsp, origin);
 	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", l, bsp->data.leafs[l].cluster, bsp->data.leafs[l].n_leaffaces);
-	if (FALSE && l >= 0 && bsp->data.leafs[l].cluster >= 0) {
+	if (l >= 0) {
 		cleaf = &bsp->data.leafs[l];
 
 		for (x = 0; x < bsp->data.n_leafs; x++) {
@@ -193,11 +202,11 @@ void bsp_calculatevis(bspfile *bsp, float origin[3]) {
 				continue;
 			}
 
-			for (j = 0; j < cleaf->n_leaffaces; j++) {
-				lface = &bsp->data.leaffaces[cleaf->leafface+j];
+			for (j = 0; j < bsp->data.leafs[x].n_leaffaces; j++) {
+				lface = &bsp->data.leaffaces[bsp->data.leafs[x].leafface+j];
 
 				if (bsp->visitedfaces[lface->face]) continue;
-				bsp->drawfaces[bsp->numfaces++] = &bsp->data.faces[lface->face];
+				bsp->drawfaces[bsp->numfaces++] = lface->face;
 				bsp->visitedfaces[lface->face] = 1;
 			}
 		}
@@ -205,7 +214,7 @@ void bsp_calculatevis(bspfile *bsp, float origin[3]) {
 	else { /* Outside the map, draw all faces */
 		bsp->numfaces = bsp->data.n_faces;
 		for (i = 0; i < bsp->numfaces; i++) {
-			bsp->drawfaces[i] = &bsp->data.faces[i];
+			bsp->drawfaces[i] = i;
 		}
 	}
 }
@@ -290,17 +299,18 @@ static void bsp_load_planes(bspfile *bsp) {
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_planes; i++) {
 		bsp_point_swivel(bsp->data.planes[i].normal);
-		bsp->data.planes[i].dist /= -BSP_SCALE;
+		bsp->data.planes[i].dist /= BSP_SCALE;
 	}
 }
 
 static void bsp_load_leafs(bspfile *bsp) {
 	int i;
+	float tmp;
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_leafs; i++) {
-		bsp_point_scwivel((float*)&bsp->data.leafs[i].mins);
-		bsp_point_scwivel((float*)&bsp->data.leafs[i].maxs);
+		bsp_fix_bounding_box(bsp->data.leafs[i].mins, 3);
+		bsp_fix_bounding_box(bsp->data.leafs[i].maxs, 3);
 	}
 }
 
@@ -309,8 +319,8 @@ static void bsp_load_nodes(bspfile *bsp) {
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_nodes; i++) {
-		bsp_point_scwivel((float*)&bsp->data.nodes[i].mins);
-		bsp_point_scwivel((float*)&bsp->data.nodes[i].maxs);
+		bsp_fix_bounding_box(bsp->data.nodes[i].mins, 2);
+		bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 2);
 	}
 }	
 
@@ -400,9 +410,9 @@ static void bsp_load_faces(bspfile *bsp) {
 	tesselpatch *patch;
 
 	/* Setup drawfaces list */
-	bsp->drawfaces = malloc(sizeof(face *) * bsp->data.n_faces);
+	bsp->drawfaces = malloc(sizeof(int) * bsp->data.n_faces);
 	bsp->visitedfaces = malloc(sizeof(int) * bsp->data.n_faces);
-	memset(bsp->drawfaces, 0, sizeof(face *) * bsp->data.n_faces);
+	memset(bsp->drawfaces, 0, sizeof(int) * bsp->data.n_faces);
 
 	/* Get ready to tesselate some patches */
 	bsp->tesselpatches = malloc(sizeof(patchlist*) * bsp->data.n_faces);
