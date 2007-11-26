@@ -1,11 +1,5 @@
 #include "common.h"
 #include "bsp.h"
-
-#include <windows.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include "glext.h"
-#include "glut.h"
 #include "jpeg.h"
 #include "extensions/ARB_multitexture_extension.h"
 
@@ -18,10 +12,31 @@ static void bsp_point_swivel(float point[3]) {
 	point[2] = -tmp;
 }
 
-/* Reads the contents of a lump into a buffer */
-static void bsp_readentry(FILE *file, direntry *entry, void *buffer) {
-	fseek(file, entry->offset, SEEK_SET);
-	fread(buffer, entry->length, 1, file);
+static void bsp_point_scwivel(float vert[3]) {
+	int i;
+	bsp_point_swivel(vert);
+	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
+}
+
+static void bsp_vertex_scale(vertex *vert, float scale, vertex *out) {
+	int i;
+	
+	for (i = 0; i < 3; i++) out->position[i] = vert->position[i] * scale;
+	for (i = 0; i < 2; i++) {
+		out->texcoord[0][i] = vert->texcoord[0][i] * scale;
+		out->texcoord[1][i] = vert->texcoord[1][i] * scale;
+	}
+}
+
+static void bsp_vertex_add(vertex *a, vertex *b, vertex *out) {
+	int i;
+	
+	for (i = 0; i < 3; i++) out->normal[i] = a->normal[i] + b->normal[i];
+	for (i = 0; i < 3; i++) out->position[i] = a->position[i] + b->position[i];
+	for (i = 0; i < 2; i++) {
+		out->texcoord[0][i] = a->texcoord[0][i] + b->texcoord[0][i];
+		out->texcoord[1][i] = a->texcoord[1][i] + b->texcoord[1][i];
+	}
 }
 
 static void bsp_draw_mesh(bspfile *bsp, face *cface) {
@@ -44,9 +59,7 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 		patch = &patches->patches[i];
 
 		//glNormalPointer(GL_FLOAT, sizeof(vertex), &patch->vertexes[0].normal);
-
 		glVertexPointer(3, GL_FLOAT, sizeof(vertex), &patch->vertexes[0].position);
-
 		glTexCoordPointer(2, GL_FLOAT, sizeof(vertex), &patch->vertexes[0].texcoord[0]);
 		
 		glClientActiveTextureARB(GL_TEXTURE1_ARB);
@@ -60,7 +73,7 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 	}
 }
 
-void bsp_draw(bspfile *bsp) {
+void bsp_draw_faces(bspfile *bsp) {
 	int i;
 	face *cface;
 
@@ -76,14 +89,14 @@ void bsp_draw(bspfile *bsp) {
 
 	glPushAttrib(GL_TEXTURE_BIT);
 
-	for (i = 0; i < bsp->data.n_faces; i++) {
-		cface = &bsp->data.faces[i];
+	for (i = 0; i < bsp->numfaces; i++) {
+		cface = bsp->drawfaces[i];
 
 		if (cface->texture != -1) {
 			glBindTexture(GL_TEXTURE_2D, bsp->texture_indexes[cface->texture]);
 
 			/* This face is alpha transparent wherever there is black in the image */
-			if (bsp->data.textures[cface->texture].flags > 0) {
+			if (bsp->data.textures[cface->texture].flags & (1<<5)) {
 				glDisable(GL_CULL_FACE);
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
@@ -126,6 +139,75 @@ void bsp_draw(bspfile *bsp) {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glClientActiveTextureARB(GL_TEXTURE0_ARB);
 	glFrontFace(GL_CCW);
+}
+
+static int bsp_findleaf(bspfile *bsp, float origin[3]) {
+	int i = 0, n = 0;
+	float dist;
+	node *cnode;
+	plane *cplane;
+
+	while (i >= 0) {
+		cnode  = &bsp->data.nodes[i];
+		cplane = &bsp->data.planes[cnode->plane];
+
+		dist = vec3f_dot(cplane->normal, origin) + cplane->dist;
+
+		printf("In node %d: children: (%d, %d)\n", i, cnode->front, cnode->back);
+
+		if (dist >= 0)  { /* camera lies in front of plane */
+			i = cnode->front;
+		}
+		else {			/* camera lies in back of plane */
+			i = cnode->back;
+		}
+
+		/* We've checked all nodes, we're in an infinite loop */
+		if (++n > bsp->data.n_nodes) return i;
+	}
+
+	return ~i;
+}
+
+static int bsp_cluster_visible(bspfile *bsp, int visCluster, int testCluster) {
+	int i = (visCluster * bsp->data.vis->sz_vecs) + (testCluster >> 3);
+	return bsp->data.vis[0].vecs[i] & (1 << (testCluster & 7));
+}
+
+void bsp_calculatevis(bspfile *bsp, float origin[3]) {
+	int i, l, x, j;
+	leaf *cleaf;
+	leafface *lface;
+
+	bsp->numfaces = 0;
+	memset(bsp->visitedfaces, 0, sizeof(int) * bsp->data.n_faces);
+	
+	//l = bsp_findleaf(bsp, origin);
+	l = 0;
+	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", l, bsp->data.leafs[l].cluster, bsp->data.leafs[l].n_leaffaces);
+	if (FALSE && l >= 0 && bsp->data.leafs[l].cluster >= 0) {
+		cleaf = &bsp->data.leafs[l];
+
+		for (x = 0; x < bsp->data.n_leafs; x++) {
+			if (!bsp_cluster_visible(bsp, cleaf->cluster, bsp->data.leafs[x].cluster)) {
+				continue;
+			}
+
+			for (j = 0; j < cleaf->n_leaffaces; j++) {
+				lface = &bsp->data.leaffaces[cleaf->leafface+j];
+
+				if (bsp->visitedfaces[lface->face]) continue;
+				bsp->drawfaces[bsp->numfaces++] = &bsp->data.faces[lface->face];
+				bsp->visitedfaces[lface->face] = 1;
+			}
+		}
+	}
+	else { /* Outside the map, draw all faces */
+		bsp->numfaces = bsp->data.n_faces;
+		for (i = 0; i < bsp->numfaces; i++) {
+			bsp->drawfaces[i] = &bsp->data.faces[i];
+		}
+	}
 }
 
 static void bsp_load_textures(bspfile *bsp) {
@@ -195,38 +277,42 @@ static void bsp_load_lightmaps(bspfile *bsp) {
 static void bsp_load_vertexes(bspfile *bsp) {
 	int i;
 
-	/* Fix vertex orientation */
+	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_vertexes; i++) {
-		bsp_point_swivel(bsp->data.vertexes[i].position);
+		bsp_point_scwivel(bsp->data.vertexes[i].position);
 		bsp_point_swivel(bsp->data.vertexes[i].normal);
-
-		/* Scale values down by 64x */
-		bsp->data.vertexes[i].position[0] /= 64;
-		bsp->data.vertexes[i].position[1] /= 64;
-		bsp->data.vertexes[i].position[2] /= 64;
 	}
 }
 
-static void bsp_vertex_scale(vertex *vert, float scale, vertex *out) {
+static void bsp_load_planes(bspfile *bsp) {
 	int i;
-	
-	for (i = 0; i < 3; i++) out->position[i] = vert->position[i] * scale;
-	for (i = 0; i < 2; i++) {
-		out->texcoord[0][i] = vert->texcoord[0][i] * scale;
-		out->texcoord[1][i] = vert->texcoord[1][i] * scale;
+
+	/* Fix vertex orientation and scale */
+	for (i = 0; i < bsp->data.n_planes; i++) {
+		bsp_point_swivel(bsp->data.planes[i].normal);
+		bsp->data.planes[i].dist /= -BSP_SCALE;
 	}
 }
 
-static void bsp_vertex_add(vertex *a, vertex *b, vertex *out) {
+static void bsp_load_leafs(bspfile *bsp) {
 	int i;
-	
-	for (i = 0; i < 3; i++) out->normal[i] = a->normal[i] + b->normal[i];
-	for (i = 0; i < 3; i++) out->position[i] = a->position[i] + b->position[i];
-	for (i = 0; i < 2; i++) {
-		out->texcoord[0][i] = a->texcoord[0][i] + b->texcoord[0][i];
-		out->texcoord[1][i] = a->texcoord[1][i] + b->texcoord[1][i];
+
+	/* Fix vertex orientation and scale */
+	for (i = 0; i < bsp->data.n_leafs; i++) {
+		bsp_point_scwivel((float*)&bsp->data.leafs[i].mins);
+		bsp_point_scwivel((float*)&bsp->data.leafs[i].maxs);
 	}
 }
+
+static void bsp_load_nodes(bspfile *bsp) {
+	int i;
+
+	/* Fix vertex orientation and scale */
+	for (i = 0; i < bsp->data.n_nodes; i++) {
+		bsp_point_scwivel((float*)&bsp->data.nodes[i].mins);
+		bsp_point_scwivel((float*)&bsp->data.nodes[i].maxs);
+	}
+}	
 
 /* Use control points in tesselpatch to generate vertexes */
 static void bsp_tesselate_patch(bspfile *bsp, tesselpatch *patch, int level) {
@@ -313,11 +399,21 @@ static void bsp_load_faces(bspfile *bsp) {
 	face *cface;
 	tesselpatch *patch;
 
-	/* Find patches and tesselate them */
+	/* Setup drawfaces list */
+	bsp->drawfaces = malloc(sizeof(face *) * bsp->data.n_faces);
+	bsp->visitedfaces = malloc(sizeof(int) * bsp->data.n_faces);
+	memset(bsp->drawfaces, 0, sizeof(face *) * bsp->data.n_faces);
+
+	/* Get ready to tesselate some patches */
 	bsp->tesselpatches = malloc(sizeof(patchlist*) * bsp->data.n_faces);
+	
 	for (i = 0; i < bsp->data.n_faces; i++) {
 		cface = &bsp->data.faces[i];
 
+		/* Fix normals */
+		bsp_point_swivel(cface->normal);
+
+		/* Find patches and tesselate them */
 		if (cface->type == FACE_PATCH) {
 			/* Found a patch, initialize memory for tesselation */
 			width  = cface->size[0];
@@ -353,52 +449,96 @@ static void bsp_load_faces(bspfile *bsp) {
 	}
 }
 
+/* Reads the contents of a lump into a buffer */
+static void bsp_readentry(FILE *file, direntry *entry, void *buffer) {
+	fseek(file, entry->offset, SEEK_SET);
+	fread(buffer, entry->length, 1, file);
+}
+
 bspfile *bsp_load(char *filename) {
 	int i, len;
 	bspfile *bsp;
+	direntry *entry;
 	FILE *fp = fopen(filename, "rb");
 
-	if (!fp) return NULL;
+	if (!fp) {
+		fprintf(stderr, "Critical: could not load map '%s'\n", filename);
+		return NULL;
+	}
 
 	bsp = malloc(sizeof(bspfile));
 	memset(bsp, 0, sizeof(bspfile));
 	fread(&bsp->header, sizeof(bspheader), 1, fp);
 
-	for (i = 0; i < NUM_BSP_LUMPS; i++) {
-		len = bsp->header.direntries[i].length;
+	for (i = 0; i < BSP_NUM_LUMPS; i++) {
+		entry = &bsp->header.direntries[i];
+		len = entry->length;
 
-		if (i == TEXTURES) {
+		if (i == BSP_TEXTURES) {
 			bsp->data.textures = malloc(len);
 			bsp->data.n_textures = len / sizeof(texture);
-			bsp_readentry(fp, &bsp->header.direntries[i], bsp->data.textures);			
+			bsp_readentry(fp, entry, bsp->data.textures);			
 
 			bsp->texture_indexes = malloc(bsp->data.n_textures * sizeof(int));
 			bsp_load_textures(bsp);
 		}
-		else if (i == LIGHTMAPS) {
+		else if (i == BSP_LIGHTMAPS) {
 			bsp->data.lightmaps = malloc(len);
 			bsp->data.n_lightmaps = len / sizeof(lightmap);
-			bsp_readentry(fp, &bsp->header.direntries[i], bsp->data.lightmaps);			
+			bsp_readentry(fp, entry, bsp->data.lightmaps);			
 
 			bsp->lightmap_indexes = malloc(bsp->data.n_lightmaps * sizeof(int));
 			bsp_load_lightmaps(bsp);
 		}
-		else if (i == VERTEXES) {
+		else if (i == BSP_VERTEXES) {
 			bsp->data.vertexes = malloc(len);
 			bsp->data.n_vertexes = len / sizeof(vertex);
-			bsp_readentry(fp, &bsp->header.direntries[i], bsp->data.vertexes);
+			bsp_readentry(fp, entry, bsp->data.vertexes);
 			bsp_load_vertexes(bsp);
 		}
-		else if (i == FACES) {
+		else if (i == BSP_FACES) {
 			bsp->data.faces = malloc(len);
 			bsp->data.n_faces = len / sizeof(face);
-			bsp_readentry(fp, &bsp->header.direntries[i], bsp->data.faces);
+			bsp_readentry(fp, entry, bsp->data.faces);
 			bsp_load_faces(bsp);
 		}
-		else if (i == MESHVERTS) {
+		else if (i == BSP_MESHVERTS) {
 			bsp->data.meshverts = malloc(len);
 			bsp->data.n_meshverts = len / sizeof(meshvert);
-			bsp_readentry(fp, &bsp->header.direntries[i], bsp->data.meshverts);
+			bsp_readentry(fp, entry, bsp->data.meshverts);
+		}
+		else if (i == BSP_LEAFS) {
+			bsp->data.leafs = malloc(len);
+			bsp->data.n_leafs = len / sizeof(leaf);
+			bsp_readentry(fp, entry, bsp->data.leafs);
+			bsp_load_leafs(bsp);
+		}
+		else if (i == BSP_LEAFFACES) {
+			bsp->data.leaffaces = malloc(len);
+			bsp->data.n_leaffaces = len / sizeof(leafface);
+			bsp_readentry(fp, entry, bsp->data.leaffaces);
+		}
+		else if (i == BSP_LEAFBRUSHES) {
+			bsp->data.leafbrushes = malloc(len);
+			bsp->data.n_leafbrushes = len / sizeof(leafbrush);
+			bsp_readentry(fp, entry, bsp->data.leafbrushes);
+		}
+		else if (i == BSP_NODES) {
+			bsp->data.nodes = malloc(len);
+			bsp->data.n_nodes = len / sizeof(node);
+			bsp_readentry(fp, entry, bsp->data.nodes);
+			bsp_load_nodes(bsp);
+		}
+		else if (i == BSP_PLANES) {
+			bsp->data.planes = malloc(len);
+			bsp->data.n_planes = len / sizeof(plane);
+			bsp_readentry(fp, entry, bsp->data.planes);
+			bsp_load_planes(bsp);
+		}
+		else if (i == BSP_VISDATA) {
+			bsp->data.vis = malloc(len);
+			memset(bsp->data.vis, 0, len);
+			bsp_readentry(fp, entry, bsp->data.vis);
 		}
 	}
 	fclose(fp);

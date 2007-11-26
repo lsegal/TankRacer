@@ -1,25 +1,27 @@
 #ifndef HAVE_BSP_H
 #define HAVE_BSP_H
 
+#define BSP_SCALE 64
+
 const enum direntrynames {
-	ENTITIES,
-	TEXTURES,
-	PLANES,
-	NODES,
-	LEAFS,
-	LEAFFACES,
-	LEAFBRUSHES,
-	MODELS,
-	BRUSHES,
-	BRUSHSIDES,
-	VERTEXES,
-	MESHVERTS,
-	EFFECTS,
-	FACES,
-	LIGHTMAPS,
-	LIGHTVOLS,
-	VISDATA,
-	NUM_BSP_LUMPS
+	BSP_ENTITIES,
+	BSP_TEXTURES,
+	BSP_PLANES,
+	BSP_NODES,
+	BSP_LEAFS,
+	BSP_LEAFFACES,
+	BSP_LEAFBRUSHES,
+	BSP_MODELS,
+	BSP_BRUSHES,
+	BSP_BRUSHSIDES,
+	BSP_VERTEXES,
+	BSP_MESHVERTS,
+	BSP_EFFECTS,
+	BSP_FACES,
+	BSP_LIGHTMAPS,
+	BSP_LIGHTVOLS,
+	BSP_VISDATA,
+	BSP_NUM_LUMPS
 };
 
 const enum facetypes {
@@ -51,7 +53,8 @@ typedef struct plane {
 
 typedef struct node {
 	int		plane;			/* Plane index */
-	int		children[2];	/* Children indices. Negative numbers are leaf indices: -(leaf+1). */
+	int		front;			/* Children indices. Negative numbers are leaf indices: -(leaf+1). */
+	int		back;			/* Children indices. Negative numbers are leaf indices: -(leaf+1). */
 	int		mins[2];		/* Integer bounding box min coord. */
 	int		maxs[2];		/* Integer bounding box max coord. */
 } node;
@@ -142,7 +145,7 @@ typedef struct lightvol {
 typedef struct visdata {
 	int		n_vecs;			/* Number of vectors							*/
 	int		sz_vecs;		/* Size of each vector in bytes					*/
-	ubyte	*vecs;			/* Visibility data (n_vecs * sz_vecs in size)	*/
+	ubyte	vecs[1];		/* Visibility data (n_vecs * sz_vecs in size)	*/
 } visdata;
 
 typedef struct bspheader {
@@ -176,6 +179,7 @@ typedef struct bspdata {
 	int			n_nodes;
 	int			n_leafs;
 	int			n_leaffaces;
+	int			n_leafbrushes;
 	int			n_models;
 	int			n_brushes;
 	int			n_brushsides;
@@ -185,7 +189,6 @@ typedef struct bspdata {
 	int			n_faces;
 	int			n_lightmaps;
 	int			n_lightvols;
-	int			n_vis;
 } bspdata;
 
 typedef struct tesselpatch {
@@ -206,9 +209,13 @@ typedef struct bspfile {
 	int			*texture_indexes;
 	int			*lightmap_indexes;
 	patchlist   **tesselpatches;
+	face		**drawfaces;
+	int			numfaces;
+	int			*visitedfaces;
 } bspfile;
 
 extern bspfile *bsp_load(char *);
-extern void     bsp_draw(bspfile *);
+extern void     bsp_draw_faces(bspfile *);
+extern void		bsp_calculatevis(bspfile *, float[3]);
 
 #endif /* HAVE_BSP_H */

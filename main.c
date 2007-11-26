@@ -1,15 +1,9 @@
 #include "common.h"
 #include "bsp.h"
-
-#include <windows.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include "glut.h"
-#include "glext.h"
 #include "extensions/ARB_multitexture_extension.h"
 
-double aspect, angles[2], origin[3] = {0,1,0};
-double width, height;
+float angles[2], origin[3] = {0,1,0};
+float width, height, aspect;
 bspfile *bsp;
 
 int moving = 0;
@@ -22,10 +16,7 @@ static void reshape(int w, int h) {
 }
 
 static void display(void) {
-	GLfloat pos[] = { -0.3, 0.7, -2.0, 1.0 };
-	GLfloat spec[] = { 0.7, 0.7, 0.7, 1.0 };
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -33,9 +24,13 @@ static void display(void) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
+	glColor3d(1, 1, 1);
+
 	if (moving) {
 		origin[0] += 0.1 * cosd(angles[0] / 2);
+		origin[1] += 0.1 * tand(angles[1] / 5);
 		origin[2] += 0.1 * sind(angles[0] / 2);
+		bsp_calculatevis(bsp, origin);
 	}
 
 	gluLookAt(origin[0], origin[1], origin[2], 
@@ -43,10 +38,16 @@ static void display(void) {
 		origin[1] + tand(angles[1] / 5), 
 		origin[2] + sind(angles[0] / 2), 0, 1, 0);
 
-	glEnable(GL_LIGHT0);
-	glLightfv(GL_LIGHT0, GL_POSITION, pos);
+	bsp_draw_faces(bsp);
 
-	bsp_draw(bsp);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, width, 0, height);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glColor3d(1, 0, 0);
+	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", origin[0], origin[1], origin[2]);
 
 	glutSwapBuffers();
 }
@@ -125,7 +126,11 @@ static void init_gl() {
 }
 
 static void init_bsp() {
-	bsp = bsp_load("test1.bsp");
+	bsp = bsp_load("maps/pdmq3paper2.bsp");
+	if (!bsp) {
+		exit(1);
+	}
+	bsp_calculatevis(bsp, origin);
 }
 
 int main(int argc, char **argv) {

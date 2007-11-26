@@ -1,3 +1,9 @@
+#include <windows.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include "glext.h"
+#include "glut.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -19,3 +25,6 @@ typedef unsigned char ubyte;
 #define cosd(n)    cos(DEG2RAD(n))
 #define sind(n)	   sin(DEG2RAD(n))
 #define tand(n)    tan(DEG2RAD(n))
+
+extern float vec3f_dot(float[3], float[3]);
+extern void  text_output(int, int, char *, ...);
