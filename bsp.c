@@ -160,7 +160,8 @@ static int bsp_findleaf(bspfile *bsp, float origin[3]) {
 
 	for (n = 0; n < bsp->data.n_nodes; n++) {
 		cnode  = &bsp->data.nodes[i];
-		if (cnode->plane < 0) printf("ERRROR!\n");
+		if (cnode->plane < 0) 
+			printf("ERRROR!\n");
 		cplane = &bsp->data.planes[cnode->plane];
 
 		dist = vec3f_dot(cplane->normal, origin) - cplane->dist;
@@ -168,7 +169,7 @@ static int bsp_findleaf(bspfile *bsp, float origin[3]) {
 		if (dist > 0)  { /* camera lies in front of plane */
 			i = cnode->front;
 		}
-		else {			/* camera lies in back of plane */
+		else {			 /* camera lies in back of plane */
 			i = cnode->back;
 		}
 
@@ -305,7 +306,6 @@ static void bsp_load_planes(bspfile *bsp) {
 
 static void bsp_load_leafs(bspfile *bsp) {
 	int i;
-	float tmp;
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_leafs; i++) {
@@ -319,8 +319,8 @@ static void bsp_load_nodes(bspfile *bsp) {
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_nodes; i++) {
-		bsp_fix_bounding_box(bsp->data.nodes[i].mins, 2);
-		bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 2);
+	//	bsp_fix_bounding_box(bsp->data.nodes[i].mins, 2);
+	//	bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 2);
 	}
 }	
 
