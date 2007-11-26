@@ -146,7 +146,7 @@ static void init_gl() {
 }
 
 static void init_bsp() {
-	bsp = bsp_load("maps/test1.bsp");
+	bsp = bsp_load("maps/pdmq3paper2.bsp");
 	if (!bsp) {
 		exit(1);
 	}
