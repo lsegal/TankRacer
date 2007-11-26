@@ -7,26 +7,26 @@ static int whiteLightmap;
 
 /* BSP up axis is Z, flip this to Y */
 static void bsp_point_swivel(float point[3]) {
-	float tmp = point[1];
-	point[1] = point[2];
-	point[2] = -tmp;
+//	float tmp = point[1];
+//	point[1] = point[2];
+//	point[2] = -tmp;
 }
 
 static void bsp_point_scwivel(float vert[3]) {
 	int i;
-	bsp_point_swivel(vert);
-	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
+//	bsp_point_swivel(vert);
+//	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
 }
 
 static void bsp_fix_bounding_box(int *box, int size) {
 	int i;
 	float tmp;
-	for (i = 0; i < size; i++) box[i] /= BSP_SCALE;
-	if (size == 3) {
-		tmp = box[1];
-		box[1] = box[2];
-		box[2] = -tmp;
-	}
+//	for (i = 0; i < size; i++) box[i] /= BSP_SCALE;
+//	if (size == 3) {
+//		tmp = box[1];
+//		box[1] = box[2];
+//		box[2] = -tmp;
+//	}
 }
 
 static void bsp_vertex_scale(vertex *vert, float scale, vertex *out) {
@@ -107,7 +107,7 @@ void bsp_draw_faces(bspfile *bsp) {
 			glBindTexture(GL_TEXTURE_2D, bsp->texture_indexes[cface->texture]);
 
 			/* This face is alpha transparent wherever there is black in the image */
-			if (bsp->data.textures[cface->texture].flags & (1<<5)) {
+			if (bsp->data.textures[cface->texture].flags & 255) {
 				glDisable(GL_CULL_FACE);
 				glEnable(GL_BLEND);
 				glBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
@@ -134,7 +134,7 @@ void bsp_draw_faces(bspfile *bsp) {
 				break;
 		}
 
-		if (cface->texture != -1 && bsp->data.textures[cface->texture].flags > 0) {
+		if (bsp->data.textures[cface->texture].flags & 255) {
 			glDisable(GL_BLEND);
 			glEnable(GL_CULL_FACE);
 		}
@@ -153,31 +153,22 @@ void bsp_draw_faces(bspfile *bsp) {
 }
 
 static int bsp_findleaf(bspfile *bsp, float origin[3]) {
-	int i = 0, n;
-	float dist;
-	node *cnode;
-	plane *cplane;
+	int currentNode=0, n = 0;
+	
+	//loop until we find a negative index
+	while(currentNode>=0)
+	{
+		//if the camera is in front of the plane for this node, assign i to be the front node
+		if(vec3f_dot(origin, bsp->data.planes[bsp->data.nodes[currentNode].plane].normal) - bsp->data.planes[bsp->data.nodes[currentNode].plane].dist >= 0)
+			currentNode=bsp->data.nodes[currentNode].front;
+		else
+			currentNode=bsp->data.nodes[currentNode].back;
 
-	for (n = 0; n < bsp->data.n_nodes; n++) {
-		cnode  = &bsp->data.nodes[i];
-		if (cnode->plane < 0) 
-			printf("ERRROR!\n");
-		cplane = &bsp->data.planes[cnode->plane];
-
-		dist = vec3f_dot(cplane->normal, origin) - cplane->dist;
-
-		if (dist > 0)  { /* camera lies in front of plane */
-			i = cnode->front;
-		}
-		else {			 /* camera lies in back of plane */
-			i = cnode->back;
-		}
-
-		if (i < 0) return ~i;
+		if (++n > bsp->data.n_nodes) return -1;
 	}
 
-	printf("OVERFLOW\n");
-	return 0;
+	//return leaf index
+	return ~currentNode;
 }
 
 static int bsp_cluster_visible(bspfile *bsp, int visCluster, int testCluster) {
@@ -193,7 +184,8 @@ void bsp_calculatevis(bspfile *bsp, float origin[3]) {
 	bsp->numfaces = 0;
 	memset(bsp->visitedfaces, 0, sizeof(int) * bsp->data.n_faces);
 	
-	l = bsp_findleaf(bsp, origin);
+	//l = bsp_findleaf(bsp, origin);
+	l = -1;
 	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", l, bsp->data.leafs[l].cluster, bsp->data.leafs[l].n_leaffaces);
 	if (l >= 0) {
 		cleaf = &bsp->data.leafs[l];
@@ -221,16 +213,22 @@ void bsp_calculatevis(bspfile *bsp, float origin[3]) {
 }
 
 static void bsp_load_textures(bspfile *bsp) {
-	int x;
+	int x, tex;
 	char full_texname[70];
 
 	for (x = 0; x < bsp->data.n_textures; x++) {
-		/* Build filename */
+		/* Attempt to load texture as jpeg */
 		strncpy(full_texname, bsp->data.textures[x].name, 64);
 		strncat(full_texname, ".jpg", 4);
+		tex = load_texture_jpeg(full_texname);
 
-		/* Load jpeg texture */
-		bsp->texture_indexes[x] = load_texture_jpeg(full_texname);
+		if (tex == -1) { /* Attempt to load texture as .tga */
+			strncpy(full_texname, bsp->data.textures[x].name, 64);
+			strncat(full_texname, ".tga", 4);
+			tex = load_texture_tga(full_texname);
+		}
+
+		bsp->texture_indexes[x] = tex;
 	}
 }
 
@@ -319,8 +317,8 @@ static void bsp_load_nodes(bspfile *bsp) {
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_nodes; i++) {
-	//	bsp_fix_bounding_box(bsp->data.nodes[i].mins, 2);
-	//	bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 2);
+		bsp_fix_bounding_box(bsp->data.nodes[i].mins, 2);
+		bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 2);
 	}
 }	
 

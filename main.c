@@ -2,7 +2,7 @@
 #include "bsp.h"
 #include "extensions/ARB_multitexture_extension.h"
 
-float angles[2], origin[3] = {0,1,0};
+float angles[2], origin[3] = {0,0,64};
 float width, height, aspect;
 bspfile *bsp;
 
@@ -28,16 +28,16 @@ static void display(void) {
 	glColor3d(1, 1, 1);
 
 	if (moving) {
-		origin[0] += dir * 0.1 * cosd(angles[0] / 2);
-		origin[1] += dir * 0.1 * tand(angles[1] / 5);
-		origin[2] += dir * 0.1 * sind(angles[0] / 2);
+		origin[0] += 20 * dir * cosd(angles[0] / 2);
+		origin[1] += 20 * dir * sind(angles[0] / 2);
+		origin[2] += 20 * dir * tand(angles[1] / 5);
 		bsp_calculatevis(bsp, origin);
 	}
 
 	gluLookAt(origin[0], origin[1], origin[2], 
 		origin[0] + cosd(angles[0] / 2), 
-		origin[1] + tand(angles[1] / 5), 
-		origin[2] + sind(angles[0] / 2), 0, 1, 0);
+		origin[1] + sind(angles[0] / 2), 
+		origin[2] + tand(angles[1] / 5), 0, 0, 1);
 
 	bsp_draw_faces(bsp);
 
@@ -58,7 +58,7 @@ static void mouse(int x, int y) {
 	double a, b;
 	a = x - width/2;
 	b = y - height/2;
-	angles[0] += a - lastx;
+	angles[0] -= a - lastx;
 	angles[1] += b - lasty;
 	lastx = a;
 	lasty = b;
@@ -68,8 +68,8 @@ static void mouse(int x, int y) {
 
 static void key(unsigned char key, int x, int y) {
 	if (key == 27) exit(0);
-	if (key == 'd') angles[0] += 10;
-	if (key == 'a') angles[0] -= 10;
+	if (key == 'd') angles[0] -= 10;
+	if (key == 'a') angles[0] += 10;
 	if (key == 's') {
 		dir = -1;
 		moving = 1;

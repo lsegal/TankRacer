@@ -44,7 +44,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
-				StructMemberAlignment="1"
+				StructMemberAlignment="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="true"
@@ -173,22 +173,6 @@
 	</References>
 	<Files>
 		<Filter
-			Name="libjpeg"
-			>
-			<File
-				RelativePath=".\jconfig.h"
-				>
-			</File>
-			<File
-				RelativePath=".\jmorecfg.h"
-				>
-			</File>
-			<File
-				RelativePath=".\jpeglib.h"
-				>
-			</File>
-		</Filter>
-		<Filter
 			Name="headers"
 			>
 			<File
@@ -213,32 +197,64 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="extensions"
+			Name="support"
 			>
-			<File
-				RelativePath=".\extensions\ARB_multitexture_extension.c"
+			<Filter
+				Name="libtga"
 				>
-			</File>
-			<File
-				RelativePath=".\extensions\ARB_multitexture_extension.h"
+				<File
+					RelativePath=".\tgalib.c"
+					>
+				</File>
+				<File
+					RelativePath=".\tgalib.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="libjpeg"
 				>
-			</File>
-			<File
-				RelativePath=".\extensions\EXT_draw_range_elements_extension.c"
+				<File
+					RelativePath=".\jconfig.h"
+					>
+				</File>
+				<File
+					RelativePath=".\jmorecfg.h"
+					>
+				</File>
+				<File
+					RelativePath=".\jpeglib.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="extensions"
 				>
-			</File>
-			<File
-				RelativePath=".\extensions\EXT_draw_range_elements_extension.h"
-				>
-			</File>
-			<File
-				RelativePath=".\extensions\EXT_multi_draw_arrays_extension.c"
-				>
-			</File>
-			<File
-				RelativePath=".\extensions\EXT_multi_draw_arrays_extension.h"
-				>
-			</File>
+				<File
+					RelativePath=".\extensions\ARB_multitexture_extension.c"
+					>
+				</File>
+				<File
+					RelativePath=".\extensions\ARB_multitexture_extension.h"
+					>
+				</File>
+				<File
+					RelativePath=".\extensions\EXT_draw_range_elements_extension.c"
+					>
+				</File>
+				<File
+					RelativePath=".\extensions\EXT_draw_range_elements_extension.h"
+					>
+				</File>
+				<File
+					RelativePath=".\extensions\EXT_multi_draw_arrays_extension.c"
+					>
+				</File>
+				<File
+					RelativePath=".\extensions\EXT_multi_draw_arrays_extension.h"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<File
 			RelativePath=".\bsp.c"
@@ -262,6 +278,10 @@
 		</File>
 		<File
 			RelativePath=".\main.c"
+			>
+		</File>
+		<File
+			RelativePath=".\tga.c"
 			>
 		</File>
 	</Files>
