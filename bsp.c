@@ -396,9 +396,8 @@ static void bsp_readentry(FILE *file, direntry *entry, void *buffer) {
 }
 
 /* Finds the leaf that a point lies in */
-int bsp_find_leaf(bspfile *bsp, float origin[3]) {
-	int index = 0;
-	float dist;
+leaf *bsp_find_leaf(bspfile *bsp, float origin[3]) {
+	int index = 0, type;
 	node *cnode;
 	plane *cplane;
 	
@@ -406,11 +405,11 @@ int bsp_find_leaf(bspfile *bsp, float origin[3]) {
 		cnode = &bsp->data.nodes[index];
 		cplane = &bsp->data.planes[cnode->plane];
 
-		dist = vec3f_dot(origin, cplane->normal) - cplane->dist;
-		index = dist > 0 ? cnode->front : cnode->back;
+		type = vec3f_classify(origin, cplane->normal, cplane->dist);
+		index = type >= 0 ? cnode->front : cnode->back;
 	}
 
-	return ~index;
+	return &bsp->data.leafs[~index];
 }
 
 /* Tests whether a leaf is visible from another leaf */
@@ -419,6 +418,43 @@ int bsp_leaf_visible(bspfile *bsp, leaf *visLeaf, leaf *testLeaf) {
 	if (visLeaf->cluster < 0) return 0;
 	i = (visLeaf->cluster * bsp->data.vis->sz_vecs) + (testLeaf->cluster >> 3);
 	return bsp->data.vis[0].vecs[i] & (1 << (testLeaf->cluster & 7));
+}
+
+plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1, leaf *leaf2) {
+	int i, j, n, count = 2;
+	float d1, d2;
+	leaf *leaves[2];
+	leafbrush *lbrush;
+	brush *cbrush;
+	plane *cplane;
+
+	if (!leaf1) leaf1 = bsp_find_leaf(bsp, p1);
+	if (!leaf2) leaf2 = bsp_find_leaf(bsp, p2);
+	leaves[0] = leaf1; leaves[1] = leaf2;
+
+	if (leaf1 == leaf2) return NULL;
+
+	for (n = 0; n < count; n++) {
+		for (i = 0; i < leaves[n]->n_leafbrushes; i++) {
+			lbrush = &bsp->data.leafbrushes[leaves[n]->leafbrush+i];
+			cbrush = &bsp->data.brushes[lbrush->brush];
+			if (!(bsp->data.textures[cbrush->texture].contents & 1)) continue;
+
+			for (j = 0; j < cbrush->n_brushsides; j++) {
+				cplane = &bsp->data.planes[bsp->data.brushsides[cbrush->brushside+j].plane];
+
+				d1 = vec3f_classify(p1, cplane->normal, cplane->dist);
+				d2 = vec3f_classify(p2, cplane->normal, cplane->dist);
+				if (!d1 || !d2 || d1 != d2) {
+					printf("Collision with %s %s\n", bsp->data.textures[cbrush->texture].name,
+						(count == 2 ? "(through two leaves)" : ""));
+					return cplane;
+				}
+			}
+		}
+	}
+
+	return NULL;
 }
 
 bspfile *bsp_load(char *filename) {
@@ -507,8 +543,19 @@ bspfile *bsp_load(char *filename) {
 		}
 		else if (i == BSP_VISDATA) {
 			bsp->data.vis = malloc(len);
-			memset(bsp->data.vis, 0, len);
 			bsp_readentry(fp, entry, bsp->data.vis);
+		}
+		else if (i == BSP_BRUSHES) {
+			bsp->data.brushes = malloc(len);
+			bsp->data.n_brushes = len / sizeof(brush);
+			bsp_readentry(fp, entry, bsp->data.brushes);
+			printf("%d brushes\n", bsp->data.n_brushes);
+		}
+		else if (i == BSP_BRUSHSIDES) {
+			bsp->data.brushsides = malloc(len);
+			bsp->data.n_brushsides = len / sizeof(brushside);
+			bsp_readentry(fp, entry, bsp->data.brushsides);
+			printf("%d brushsides\n", bsp->data.n_brushsides);
 		}
 	}
 	fclose(fp);

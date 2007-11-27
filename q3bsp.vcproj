@@ -260,6 +260,26 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="imaging"
+			>
+			<File
+				RelativePath=".\jpeg.c"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						StructMemberAlignment="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\tga.c"
+				>
+			</File>
+		</Filter>
 		<File
 			RelativePath=".\bsp.c"
 			>
@@ -273,23 +293,7 @@
 			>
 		</File>
 		<File
-			RelativePath=".\jpeg.c"
-			>
-			<FileConfiguration
-				Name="Debug|Win32"
-				>
-				<Tool
-					Name="VCCLCompilerTool"
-					StructMemberAlignment="0"
-				/>
-			</FileConfiguration>
-		</File>
-		<File
 			RelativePath=".\main.c"
-			>
-		</File>
-		<File
-			RelativePath=".\tga.c"
 			>
 		</File>
 	</Files>

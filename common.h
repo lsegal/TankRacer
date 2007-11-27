@@ -19,6 +19,7 @@
 typedef unsigned char ubyte;
 
 #include <math.h>
+#define EPSILON 0.03125f
 #define PI 3.141592653585
 #define DEG2RAD(n) (PI * n / 180)
 #define RAD2DEG(n) (180 * n / PI)
@@ -27,11 +28,15 @@ typedef unsigned char ubyte;
 #define tand(n)    tan(DEG2RAD(n))
 
 #define       vec3f_mag(vec) sqrt(vec3f_dot(vec, vec))
+#define		  vec3f_set(src, dst) vec3f_scale(src, 1.0f, dst)
 extern float  vec3f_dot(float[3], float[3]);
 extern float *vec3f_scale(float[3], float, float[3]);
 extern float *vec3f_norm(float[3]);
 extern float *vec3f_add(float[3], float[3], float[3]);
 extern float *vec3f_sub(float[3], float[3], float[3]);
 extern float  vec3f_dist(float[3], float[3]);
+extern float  vec3f_classify(float[3], float[3], float);
+
+extern float *mat4f_mult(float[16], float[16], float[16]);
 
 extern void  text_output(int, int, char *, ...);

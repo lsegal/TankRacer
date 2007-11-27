@@ -35,6 +35,31 @@ float vec3f_dist(float p1[3], float p2[3]) {
 	return vec3f_mag(vec3f_sub(p1, p2, dv));
 }
 
+/* Returns -1 if a point is behind a plane, 0 if it lies in the plane and 1 if it's in front */
+float vec3f_classify(float point[3], float plane[3], float intercept) {
+	float dist = vec3f_dot(point, plane) - intercept;
+	if (dist < -EPSILON) return -1;
+	if (dist >  EPSILON) return  1;
+	else				 return  0;
+}
+
+float *mat4f_mult(float m1[16], float m2[16], float out[16]) {
+    int i, j, k;
+    float sum;
+
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++) {
+			sum = 0;
+			for (k = 0; k < 4; k++) {
+				sum += m1[j*4+k] * m2[k*4+i];
+			}
+			out[j*4+i] = sum;
+		}
+	}
+
+	return out;
+}
+
 void text_output(int x, int y, char *fmt, ...) {
 	char buf[1024];
 	int i = 0;

@@ -11,13 +11,18 @@ typedef struct Camera {
 	float		aspectRatio;
 
 	bspfile		*bsp;
+	leaf		*currentLeaf;
 	int			*faceList;
 	int			 numFaces;
 	int			*visitedFaces;
+
+	float		frustum[6][4];
 } Camera;
 
 void Camera_Init(Camera *, bspfile *);
 void Camera_Free(Camera *);
+void Camera_SetViewAngles(Camera *, float, float);
+void Camera_SetPosition(Camera *, float[3]);
 void Camera_Move(Camera *, float[3]);
 void Camera_MoveInDirection(Camera *, float);
 void Camera_Render(Camera *);

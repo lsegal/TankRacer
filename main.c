@@ -28,7 +28,7 @@ static void display(void) {
 
 	if (moving) {
 		Camera_MoveInDirection(camera[0], dir / 5);
-		Camera_MoveInDirection(camera[1], -dir / 5);
+		Camera_SetPosition(camera[1], camera[0]->position);
 	}
 
 	glViewport(0, height/2, width, height/2);

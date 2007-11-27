@@ -214,7 +214,8 @@ typedef struct bspfile {
 extern bspfile *bsp_load(char *);
 extern void		bsp_free(bspfile *);
 extern void     bsp_draw_faces(bspfile *, int *, int);
-extern int		bsp_find_leaf(bspfile *, float[3]);
+extern leaf	   *bsp_find_leaf(bspfile *, float[3]);
 extern int		bsp_leaf_visible(bspfile *, leaf *, leaf *);
+extern plane   *bsp_simple_collision(bspfile *, float[3], float[3], leaf *, leaf *);
 
 #endif /* HAVE_BSP_H */

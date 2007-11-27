@@ -1,8 +1,14 @@
 #include "common.h"
 #include "camera.h"
 
-static int Camera_FaceSort(const void *a, const void *b);
+static const enum BoxSides { 
+	SIDE_RIGHT, SIDE_LEFT, SIDE_BOTTOM, SIDE_TOP, SIDE_FAR, SIDE_NEAR 
+};
+
+static int  Camera_FaceSort(const void *a, const void *b);
 static void Camera_GenerateFaceList(Camera *self);
+static int  Camera_FrustumCull(Camera *self, leaf *testLeaf);
+static void Camera_SetFrustum(Camera *self);
 
 void Camera_Init(Camera *self, bspfile *bsp) {
 	int size;
@@ -26,11 +32,44 @@ void Camera_Init(Camera *self, bspfile *bsp) {
 void Camera_Free(Camera *self) {
 	free(self->visitedFaces);
 	free(self->faceList);
-	free(self);
+	//free(self);
+}
+
+void Camera_SetPosition(Camera *self, float position[3]) {
+	vec3f_set(position, self->position);
+	Camera_GenerateFaceList(self);
+}
+
+void Camera_SetViewAngles(Camera *self, float yaw, float pitch) {
+	self->viewAngles[0] = yaw;
+	self->viewAngles[1] = pitch;
+	Camera_GenerateFaceList(self);
 }
 
 void Camera_Move(Camera *self, float direction[3]) {
-	vec3f_add(self->position, direction, self->position);
+	int i;
+	float temp[3], dist, t, m;
+	plane *cplane;
+
+	vec3f_add(self->position, direction, temp);
+
+	cplane = bsp_simple_collision(self->bsp, self->position, temp, self->currentLeaf, NULL);
+	if (cplane && self->currentLeaf && self->currentLeaf->cluster >= 0) {
+		m = vec3f_mag(direction);
+		vec3f_set(direction, temp);
+		vec3f_norm(temp);
+		for (i = 0; i < 3; i++) {
+			t = temp[i];
+			temp[i] += cplane->normal[i];
+			if (temp[i] >= 0 && t < 0 || t >= 0 && temp[i] < 0) {
+				temp[i] = 0;
+			}
+		}
+		vec3f_scale(temp, m, temp);
+		vec3f_add(self->position, temp, temp);
+	}
+	
+	vec3f_set(temp, self->position);
 	Camera_GenerateFaceList(self);
 }
 
@@ -47,6 +86,7 @@ void Camera_Render(Camera *self) {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(self->fov, self->aspectRatio, 0.01, 100000);
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -64,7 +104,79 @@ void Camera_Render(Camera *self) {
 		self->upAngles[2]
 	);
 
+	Camera_SetFrustum(self);
+
 	bsp_draw_faces(self->bsp, self->faceList, self->numFaces);
+}
+
+static void Camera_SetFrustum(Camera *self) {
+	int i;
+	float mag, projection[16], view[16], clip[16];
+
+	glGetFloatv(GL_PROJECTION_MATRIX, projection);
+	glGetFloatv(GL_MODELVIEW_MATRIX, view);
+
+	mat4f_mult(projection, view, clip);
+
+	self->frustum[SIDE_RIGHT][0] = clip[3] - clip[0];
+	self->frustum[SIDE_RIGHT][1] = clip[7] - clip[4];
+	self->frustum[SIDE_RIGHT][2] = clip[11] - clip[8];
+	self->frustum[SIDE_RIGHT][3] = clip[15] - clip[12];
+
+	self->frustum[SIDE_LEFT][0] = clip[3] + clip[0];
+	self->frustum[SIDE_LEFT][1] = clip[7] + clip[4];
+	self->frustum[SIDE_LEFT][2] = clip[11] + clip[8];
+	self->frustum[SIDE_LEFT][3] = clip[15] + clip[12];
+
+	self->frustum[SIDE_BOTTOM][0] = clip[3] + clip[1];
+	self->frustum[SIDE_BOTTOM][1] = clip[7] + clip[5];
+	self->frustum[SIDE_BOTTOM][2] = clip[11] + clip[9];
+	self->frustum[SIDE_BOTTOM][3] = clip[15] + clip[13];
+
+	self->frustum[SIDE_TOP][0] = clip[3] - clip[1];
+	self->frustum[SIDE_TOP][1] = clip[7] - clip[5];
+	self->frustum[SIDE_TOP][2] = clip[11] - clip[9];
+	self->frustum[SIDE_TOP][3] = clip[15] - clip[13];
+
+	self->frustum[SIDE_FAR][0] = clip[3] - clip[2];
+	self->frustum[SIDE_FAR][1] = clip[7] - clip[6];
+	self->frustum[SIDE_FAR][2] = clip[11] - clip[10];
+	self->frustum[SIDE_FAR][3] = clip[15] - clip[14];
+
+	self->frustum[SIDE_NEAR][0] = clip[3] + clip[2];
+	self->frustum[SIDE_NEAR][1] = clip[7] + clip[6];
+	self->frustum[SIDE_NEAR][2] = clip[11] + clip[10];
+	self->frustum[SIDE_NEAR][3] = clip[15] + clip[14];
+
+	for (i = 0; i < 6; i++) {
+		mag = vec3f_mag(self->frustum[i]);
+		self->frustum[i][0] /= mag;
+		self->frustum[i][1] /= mag;
+		self->frustum[i][2] /= mag;
+		self->frustum[i][3] /= mag;
+	}
+}
+
+static int Camera_FrustumCull(Camera *self, leaf *testLeaf) {
+	float dist, temp[3];
+	int i;
+
+	for (i = 0; i < 6; i++) {
+		temp[0] = (float)testLeaf->mins[0];
+		temp[1] = (float)testLeaf->mins[1];
+		temp[2] = (float)testLeaf->mins[2];
+		dist = vec3f_dot(temp, self->frustum[i]) - self->frustum[i][3];
+		if (dist >= -EPSILON) continue;
+
+		temp[0] = (float)testLeaf->maxs[0];
+		temp[1] = (float)testLeaf->maxs[1];
+		temp[2] = (float)testLeaf->maxs[2];
+		dist = vec3f_dot(temp, self->frustum[i]) - self->frustum[i][3];
+		if (dist >= -EPSILON) continue;
+
+		return 0;
+	}
+	return 1;
 }
 
 static Camera *_camera;
@@ -76,10 +188,10 @@ static int Camera_FaceSort(const void *a, const void *b) {
 	face *cface[] = { &_camera->bsp->data.faces[*(int*)a], &_camera->bsp->data.faces[*(int*)b] };
 
 	if (_camera->bsp->data.textures[cface[0]->texture].flags & 32) {
-		return 1;
+		return -1;
 	}
 	else if (_camera->bsp->data.textures[cface[1]->texture].flags & 32) {
-		return -1;
+		return 1;
 	}
 
 	for (x = 0; x < 2; x++) {
@@ -100,25 +212,27 @@ static int Camera_FaceSort(const void *a, const void *b) {
 }
 
 static void Camera_GenerateFaceList(Camera *self) {
-	int i, l, x, j;
-	leaf *cleaf;
+	int i, x, j;
 	leafface *lface;
 
-	l = bsp_find_leaf(self->bsp, self->position);
+	self->currentLeaf = bsp_find_leaf(self->bsp, self->position);
 
 #ifdef _PRINTDEBUG
-	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", l, bsp->data.leafs[l].cluster, bsp->data.leafs[l].n_leaffaces);
+	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", cleaf - bsp->data.leafs, cleaf->cluster, cleaf->n_leaffaces);
 #endif
 
-	if (l >= 0 && self->bsp->data.leafs[l].cluster >= 0) {
+	if (self->currentLeaf->cluster >= 0) {
 		self->numFaces = 0;
 		memset(self->visitedFaces, 0, sizeof(int) * self->bsp->data.n_faces);
 
-		cleaf = &self->bsp->data.leafs[l];
-
 		for (x = 0; x < self->bsp->data.n_leafs; x++) {
-			if (x != l && !bsp_leaf_visible(self->bsp, cleaf, &self->bsp->data.leafs[x])) {
-				continue;
+			if (&self->bsp->data.leafs[x] != self->currentLeaf) { 
+				/* These checks only apply if this isn't the camera leaf */
+				if (!bsp_leaf_visible(self->bsp, self->currentLeaf, &self->bsp->data.leafs[x])) 
+					continue;
+
+				//if (!Camera_FrustumCull(self, &self->bsp->data.leafs[x]))
+				//	continue;
 			}
 
 			for (j = 0; j < self->bsp->data.leafs[x].n_leaffaces; j++) {
