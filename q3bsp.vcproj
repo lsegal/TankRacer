@@ -180,6 +180,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\camera.h"
+				>
+			</File>
+			<File
 				RelativePath=".\common.h"
 				>
 			</File>
@@ -227,37 +231,41 @@
 					>
 				</File>
 			</Filter>
-			<Filter
-				Name="extensions"
+		</Filter>
+		<Filter
+			Name="glext"
+			>
+			<File
+				RelativePath=".\extensions\ARB_multitexture_extension.c"
 				>
-				<File
-					RelativePath=".\extensions\ARB_multitexture_extension.c"
-					>
-				</File>
-				<File
-					RelativePath=".\extensions\ARB_multitexture_extension.h"
-					>
-				</File>
-				<File
-					RelativePath=".\extensions\EXT_draw_range_elements_extension.c"
-					>
-				</File>
-				<File
-					RelativePath=".\extensions\EXT_draw_range_elements_extension.h"
-					>
-				</File>
-				<File
-					RelativePath=".\extensions\EXT_multi_draw_arrays_extension.c"
-					>
-				</File>
-				<File
-					RelativePath=".\extensions\EXT_multi_draw_arrays_extension.h"
-					>
-				</File>
-			</Filter>
+			</File>
+			<File
+				RelativePath=".\extensions\ARB_multitexture_extension.h"
+				>
+			</File>
+			<File
+				RelativePath=".\extensions\EXT_draw_range_elements_extension.c"
+				>
+			</File>
+			<File
+				RelativePath=".\extensions\EXT_draw_range_elements_extension.h"
+				>
+			</File>
+			<File
+				RelativePath=".\extensions\EXT_multi_draw_arrays_extension.c"
+				>
+			</File>
+			<File
+				RelativePath=".\extensions\EXT_multi_draw_arrays_extension.h"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\bsp.c"
+			>
+		</File>
+		<File
+			RelativePath=".\camera.c"
 			>
 		</File>
 		<File

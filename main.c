@@ -1,16 +1,19 @@
 #include "common.h"
 #include "bsp.h"
+#include "camera.h"
 #include "extensions/ARB_multitexture_extension.h"
 
-float angles[2], origin[3] = {0,0,64};
-float width, height, aspect;
+float width, height;
 bspfile *bsp;
+Camera  *camera[2];
 
 float dir = 1;
 int moving = 0;
 
 static void cleanup() {
 	bsp_free(bsp);
+	Camera_Free(camera[0]);
+	Camera_Free(camera[1]);
 	exit(0);
 }
 
@@ -18,33 +21,23 @@ static void reshape(int w, int h) {
 	glViewport(0, 0, w, h);
 	width = w;
 	height = h;
-	aspect = (double)w / (double)h;
 }
 
 static void display(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluPerspective(60, aspect, 0.01, 100000);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glColor3d(1, 1, 1);
-
 	if (moving) {
-		origin[0] += 20 * dir * cosd(angles[0] / 2);
-		origin[1] += 20 * dir * sind(angles[0] / 2);
-		origin[2] += 20 * dir * tand(angles[1] / 5);
-		bsp_calculatevis(bsp, origin);
+		Camera_MoveInDirection(camera[0], dir / 5);
+		Camera_MoveInDirection(camera[1], -dir / 5);
 	}
 
-	gluLookAt(origin[0], origin[1], origin[2], 
-		origin[0] + cosd(angles[0] / 2), 
-		origin[1] + sind(angles[0] / 2), 
-		origin[2] + tand(angles[1] / 5), 0, 0, 1);
+	glViewport(0, height/2, width, height/2);
+	camera[0]->aspectRatio = 2 * width / height;
+	Camera_Render(camera[0]);
 
-	bsp_draw_faces(bsp);
+	glViewport(0, 0, width, height/2);
+	camera[1]->aspectRatio = 2 * width / height;
+	Camera_Render(camera[1]);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -53,7 +46,8 @@ static void display(void) {
 	glLoadIdentity();
 
 	glColor3d(1, 0, 0);
-	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", origin[0], origin[1], origin[2]);
+	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", 
+		camera[0]->position[0], camera[0]->position[1], camera[0]->position[2]);
 
 	glutSwapBuffers();
 }
@@ -63,8 +57,10 @@ static void mouse(int x, int y) {
 	double a, b;
 	a = x - width/2;
 	b = y - height/2;
-	angles[0] -= a - lastx;
-	angles[1] += b - lasty;
+	camera[0]->viewAngles[0] += a - lastx;
+	camera[0]->viewAngles[1] += b - lasty;
+	camera[1]->viewAngles[0] += a - lastx;
+	camera[1]->viewAngles[1] -= b - lasty;
 	lastx = a;
 	lasty = b;
 
@@ -75,8 +71,14 @@ static void key(unsigned char key, int x, int y) {
 	if (key == 27) {
 		cleanup();
 	}
-	if (key == 'd') angles[0] -= 10;
-	if (key == 'a') angles[0] += 10;
+	if (key == 'd') {
+		camera[0]->viewAngles[0] -= 1;
+		camera[1]->viewAngles[0] -= 1;
+	}
+	if (key == 'a') {
+		camera[0]->viewAngles[0] += 1;
+		camera[1]->viewAngles[0] -= 1;
+	}
 	if (key == 's') {
 		dir = -1;
 		moving = 1;
@@ -99,6 +101,7 @@ static void keyup(unsigned char key, int x, int y) {
 
 static void mousebutton(int button, int state, int x, int y) {
 	if (button == GLUT_RIGHT_BUTTON) {
+		dir = 1;
 		moving = (state == GLUT_DOWN ? 1 : 0);
 	}
 	glutPostRedisplay();
@@ -152,18 +155,27 @@ static void init_gl() {
 	glCullFace(GL_BACK);
 }
 
-static void init_bsp() {
+static void init_game() {
+	float origin[] = { 0.0f, 1.0f, 0.0f };
+
 	bsp = bsp_load("maps/pdmq3paper2.bsp");
 	if (!bsp) {
 		exit(1);
 	}
-	bsp_calculatevis(bsp, origin);
+	
+	camera[0] = malloc(sizeof(Camera));
+	camera[1] = malloc(sizeof(Camera));
+	Camera_Init(camera[0], bsp);
+	Camera_Move(camera[0], origin);
+	Camera_Init(camera[1], bsp);
+	Camera_Move(camera[1], origin);
+	camera[1]->viewAngles[0] = 180;
 }
 
 int main(int argc, char **argv) {
 	glutInit(&argc, argv);
 	init_gl();
-	init_bsp();
+	init_game();
 
 	glutMainLoop();
 

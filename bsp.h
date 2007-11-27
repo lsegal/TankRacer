@@ -209,14 +209,12 @@ typedef struct bspfile {
 	int			*texture_indexes;
 	int			*lightmap_indexes;
 	patchlist   **tesselpatches;
-	int			*drawfaces;
-	int			numfaces;
-	int			*visitedfaces;
 } bspfile;
 
 extern bspfile *bsp_load(char *);
 extern void		bsp_free(bspfile *);
-extern void     bsp_draw_faces(bspfile *);
-extern void		bsp_calculatevis(bspfile *, float[3]);
+extern void     bsp_draw_faces(bspfile *, int *, int);
+extern int		bsp_find_leaf(bspfile *, float[3]);
+extern int		bsp_leaf_visible(bspfile *, leaf *, leaf *);
 
 #endif /* HAVE_BSP_H */

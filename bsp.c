@@ -7,26 +7,24 @@ static int whiteLightmap;
 
 /* BSP up axis is Z, flip this to Y */
 static void bsp_point_swivel(float point[3]) {
-//	float tmp = point[1];
-//	point[1] = point[2];
-//	point[2] = -tmp;
+	float tmp = point[1];
+	point[1] = point[2];
+	point[2] = -tmp;
 }
 
 static void bsp_point_scwivel(float vert[3]) {
-//	int i;
-//	bsp_point_swivel(vert);
-//	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
+	int i;
+	bsp_point_swivel(vert);
+	for (i = 0; i < 3; i++) vert[i] /= BSP_SCALE;
 }
 
-static void bsp_fix_bounding_box(int *box, int size) {
-//	int i;
-//	float tmp;
-//	for (i = 0; i < size; i++) box[i] /= BSP_SCALE;
-//	if (size == 3) {
-//		tmp = box[1];
-//		box[1] = box[2];
-//		box[2] = -tmp;
-//	}
+static void bsp_fix_bounding_box(int box[3]) {
+	int i;
+	float tmp;
+	for (i = 0; i < 3; i++) box[i] /= BSP_SCALE;
+	tmp = box[1];
+	box[1] = box[2];
+	box[2] = -tmp;
 }
 
 static void bsp_vertex_scale(vertex *vert, float scale, vertex *out) {
@@ -84,7 +82,7 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 	}
 }
 
-void bsp_draw_faces(bspfile *bsp) {
+void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
 	int i;
 	face *cface;
 
@@ -100,8 +98,8 @@ void bsp_draw_faces(bspfile *bsp) {
 
 	glPushAttrib(GL_TEXTURE_BIT);
 
-	for (i = 0; i < bsp->numfaces; i++) {
-		cface = &bsp->data.faces[bsp->drawfaces[i]];
+	for (i = 0; i < numfaces; i++) {
+		cface = &bsp->data.faces[facelist[i]];
 
 		/* This face is alpha transparent wherever there is black in the image */
 		if (bsp->data.textures[cface->texture].flags & 32) {
@@ -128,7 +126,7 @@ void bsp_draw_faces(bspfile *bsp) {
 				bsp_draw_mesh(bsp, cface);
 				break;
 			case FACE_PATCH:
-				bsp_draw_patch(bsp, bsp->tesselpatches[bsp->drawfaces[i]]);
+				bsp_draw_patch(bsp, bsp->tesselpatches[facelist[i]]);
 				break;
 		}
 
@@ -148,107 +146,6 @@ void bsp_draw_faces(bspfile *bsp) {
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	glClientActiveTextureARB(GL_TEXTURE0_ARB);
 	glFrontFace(GL_CCW);
-}
-
-static bspfile *_bsp;
-static float *_origin;
-static int bsp_face_sort(const void *a, const void *b) {
-	int i, x, n;
-	float dist[2], temp[3];
-
-	/* Get faces from index arguments */
-	face *cface[] = { &_bsp->data.faces[*(int*)a], &_bsp->data.faces[*(int*)b] };
-
-	if (_bsp->data.textures[cface[0]->texture].flags & 32) {
-		return 1;
-	}
-	else if (_bsp->data.textures[cface[1]->texture].flags & 32) {
-		return -1;
-	}
-
-	for (x = 0; x < 2; x++) {
-/*
-		memset(&temp, 0, sizeof(float[3]));
-
-		for (i = 0; i < cface[x]->n_vertexes; i++) {
-			for (n = 0; n < 3; n++) {
-				temp[n] += _bsp->data.vertexes[cface[x]->vertex].position[n];
-			}
-		}
-		for (n = 0; n < 3; n++) temp[n] /= cface[x]->n_vertexes;
-*/
-		dist[x] = vec3f_dot(_origin, _bsp->data.vertexes[cface[x]->vertex].position);
-	}
-
-	return dist[0] < dist[1] ? -1 : 1;
-}
-
-static int bsp_findleaf(bspfile *bsp, float origin[3]) {
-	int index = 0;
-	float dist;
-	node *cnode;
-	plane *cplane;
-	
-	while (index >= 0) {
-		cnode = &bsp->data.nodes[index];
-		cplane = &bsp->data.planes[cnode->plane];
-
-		dist = vec3f_dot(origin, cplane->normal) - cplane->dist;
-		index = dist > 0 ? cnode->front : cnode->back;
-	}
-
-	return ~index;
-}
-
-static int bsp_cluster_visible(bspfile *bsp, int visCluster, int testCluster) {
-	int i;
-	if (visCluster < 0) return 0;
-	i = (visCluster * bsp->data.vis->sz_vecs) + (testCluster >> 3);
-	return bsp->data.vis[0].vecs[i] & (1 << (testCluster & 7));
-}
-
-void bsp_calculatevis(bspfile *bsp, float origin[3]) {
-	int i, l, x, j;
-	leaf *cleaf;
-	leafface *lface;
-
-	l = bsp_findleaf(bsp, origin);
-	printf("Leaf number %d, visdata: %d, leaffaces: %d\n", l, bsp->data.leafs[l].cluster, bsp->data.leafs[l].n_leaffaces);
-	if (l >= 0 && bsp->data.leafs[l].cluster >= 0) {
-		bsp->numfaces = 0;
-		memset(bsp->visitedfaces, 0, sizeof(int) * bsp->data.n_faces);
-
-		cleaf = &bsp->data.leafs[l];
-
-		for (x = 0; x < bsp->data.n_leafs; x++) {
-			if (x != l &&
-				!bsp_cluster_visible(bsp, cleaf->cluster, bsp->data.leafs[x].cluster)) {
-				continue;
-			}
-
-			for (j = 0; j < bsp->data.leafs[x].n_leaffaces; j++) {
-				lface = &bsp->data.leaffaces[bsp->data.leafs[x].leafface+j];
-
-				if (bsp->visitedfaces[lface->face]) continue;
-				bsp->drawfaces[bsp->numfaces++] = lface->face;
-				bsp->visitedfaces[lface->face] = 1;
-			}
-		}
-	}
-	else { /* Outside the map, draw all faces */
-		bsp->numfaces = bsp->data.n_faces;
-		for (i = 0; i < bsp->numfaces; i++) {
-			bsp->drawfaces[i] = i;
-		}
-	}
-
-	/* Sort the faces from farthest to closest */
-	if (bsp->numfaces < 500) {
-		printf("Sorting...\n");
-		_bsp = bsp; /* EW! */
-		_origin = origin; /* DOUBLE EW!!!! */
-		qsort(bsp->drawfaces, bsp->numfaces, sizeof(int), bsp_face_sort);
-	}
 }
 
 static void bsp_load_textures(bspfile *bsp) {
@@ -337,7 +234,7 @@ static void bsp_load_planes(bspfile *bsp) {
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_planes; i++) {
 		bsp_point_swivel(bsp->data.planes[i].normal);
-		//bsp->data.planes[i].dist /= BSP_SCALE;
+		bsp->data.planes[i].dist /= BSP_SCALE;
 	}
 }
 
@@ -346,8 +243,8 @@ static void bsp_load_leafs(bspfile *bsp) {
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_leafs; i++) {
-		bsp_fix_bounding_box(bsp->data.leafs[i].mins, 3);
-		bsp_fix_bounding_box(bsp->data.leafs[i].maxs, 3);
+		bsp_fix_bounding_box(bsp->data.leafs[i].mins);
+		bsp_fix_bounding_box(bsp->data.leafs[i].maxs);
 	}
 }
 
@@ -356,8 +253,8 @@ static void bsp_load_nodes(bspfile *bsp) {
 
 	/* Fix vertex orientation and scale */
 	for (i = 0; i < bsp->data.n_nodes; i++) {
-		bsp_fix_bounding_box(bsp->data.nodes[i].mins, 3);
-		bsp_fix_bounding_box(bsp->data.nodes[i].maxs, 3);
+		bsp_fix_bounding_box(bsp->data.nodes[i].mins);
+		bsp_fix_bounding_box(bsp->data.nodes[i].maxs);
 	}
 }	
 
@@ -446,11 +343,6 @@ static void bsp_load_faces(bspfile *bsp) {
 	face *cface;
 	tesselpatch *patch;
 
-	/* Setup drawfaces list */
-	bsp->drawfaces = malloc(sizeof(int) * bsp->data.n_faces);
-	bsp->visitedfaces = malloc(sizeof(int) * bsp->data.n_faces);
-	memset(bsp->drawfaces, 0, sizeof(int) * bsp->data.n_faces);
-
 	/* Get ready to tesselate some patches */
 	bsp->tesselpatches = malloc(sizeof(patchlist*) * bsp->data.n_faces);
 	memset(bsp->tesselpatches, 0, sizeof(patchlist*) * bsp->data.n_faces);
@@ -501,6 +393,32 @@ static void bsp_load_faces(bspfile *bsp) {
 static void bsp_readentry(FILE *file, direntry *entry, void *buffer) {
 	fseek(file, entry->offset, SEEK_SET);
 	fread(buffer, entry->length, 1, file);
+}
+
+/* Finds the leaf that a point lies in */
+int bsp_find_leaf(bspfile *bsp, float origin[3]) {
+	int index = 0;
+	float dist;
+	node *cnode;
+	plane *cplane;
+	
+	while (index >= 0) {
+		cnode = &bsp->data.nodes[index];
+		cplane = &bsp->data.planes[cnode->plane];
+
+		dist = vec3f_dot(origin, cplane->normal) - cplane->dist;
+		index = dist > 0 ? cnode->front : cnode->back;
+	}
+
+	return ~index;
+}
+
+/* Tests whether a leaf is visible from another leaf */
+int bsp_leaf_visible(bspfile *bsp, leaf *visLeaf, leaf *testLeaf) {
+	int i;
+	if (visLeaf->cluster < 0) return 0;
+	i = (visLeaf->cluster * bsp->data.vis->sz_vecs) + (testLeaf->cluster >> 3);
+	return bsp->data.vis[0].vecs[i] & (1 << (testLeaf->cluster & 7));
 }
 
 bspfile *bsp_load(char *filename) {
@@ -619,10 +537,8 @@ void bsp_free(bspfile *bsp) {
 	free(bsp->data.lightvols);
 	free(bsp->data.vis);
 
-	free(bsp->drawfaces);
 	free(bsp->lightmap_indexes);
 	free(bsp->texture_indexes);
-	free(bsp->visitedfaces);
 
 	for (i = 0; i < bsp->data.n_faces; i++) {
 		if (!bsp->tesselpatches[i]) continue;

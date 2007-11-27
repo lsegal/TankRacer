@@ -26,5 +26,12 @@ typedef unsigned char ubyte;
 #define sind(n)	   sin(DEG2RAD(n))
 #define tand(n)    tan(DEG2RAD(n))
 
-extern float vec3f_dot(float[3], float[3]);
+#define       vec3f_mag(vec) sqrt(vec3f_dot(vec, vec))
+extern float  vec3f_dot(float[3], float[3]);
+extern float *vec3f_scale(float[3], float, float[3]);
+extern float *vec3f_norm(float[3]);
+extern float *vec3f_add(float[3], float[3], float[3]);
+extern float *vec3f_sub(float[3], float[3], float[3]);
+extern float  vec3f_dist(float[3], float[3]);
+
 extern void  text_output(int, int, char *, ...);
