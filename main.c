@@ -9,6 +9,11 @@ bspfile *bsp;
 float dir = 1;
 int moving = 0;
 
+static void cleanup() {
+	bsp_free(bsp);
+	exit(0);
+}
+
 static void reshape(int w, int h) {
 	glViewport(0, 0, w, h);
 	width = w;
@@ -67,7 +72,9 @@ static void mouse(int x, int y) {
 }
 
 static void key(unsigned char key, int x, int y) {
-	if (key == 27) exit(0);
+	if (key == 27) {
+		cleanup();
+	}
 	if (key == 'd') angles[0] -= 10;
 	if (key == 'a') angles[0] += 10;
 	if (key == 's') {
@@ -100,7 +107,7 @@ static void mousebutton(int button, int state, int x, int y) {
 static void init_gl() {
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ACCUM);
 	glutInitWindowSize(800, 600);
-	glutInitWindowPosition(400, 150);
+	glutInitWindowPosition(600, 150);
 	glutCreateWindow("Quake3BSP");
 	glutDisplayFunc(display);
 	glutIdleFunc(display);
@@ -114,7 +121,7 @@ static void init_gl() {
 	SetUpARB_multitexture();
 
 	/* Initialize basic clear colour/depth setting */
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
 	
 	/* Enable texturing */
 	glEnable(GL_TEXTURE_2D);

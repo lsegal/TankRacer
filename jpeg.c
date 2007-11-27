@@ -71,8 +71,10 @@ int load_texture_jpeg(char *filename) {
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	/* Build texture */
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	gluBuild2DMipmaps(GL_TEXTURE_2D, cinfo.num_components, 
 		cinfo.image_width, cinfo.image_height, format, GL_UNSIGNED_BYTE, data);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 	glPopAttrib();
 
 	jpeg_destroy_decompress(&cinfo);

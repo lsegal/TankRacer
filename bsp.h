@@ -215,6 +215,7 @@ typedef struct bspfile {
 } bspfile;
 
 extern bspfile *bsp_load(char *);
+extern void		bsp_free(bspfile *);
 extern void     bsp_draw_faces(bspfile *);
 extern void		bsp_calculatevis(bspfile *, float[3]);
 
