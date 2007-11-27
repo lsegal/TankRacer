@@ -55,8 +55,8 @@ typedef struct node {
 	int		plane;			/* Plane index */
 	int		front;			/* Children indices. Negative numbers are leaf indices: -(leaf+1). */
 	int		back;			/* Children indices. Negative numbers are leaf indices: -(leaf+1). */
-	int		mins[2];		/* Integer bounding box min coord. */
-	int		maxs[2];		/* Integer bounding box max coord. */
+	int		mins[3];		/* Integer bounding box min coord. */
+	int		maxs[3];		/* Integer bounding box max coord. */
 } node;
 
 typedef struct leaf {
