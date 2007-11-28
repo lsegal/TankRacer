@@ -30,9 +30,10 @@ void Camera_Init(Camera *self, bspfile *bsp) {
 }
 
 void Camera_Free(Camera *self) {
+	if (!self) return;
 	free(self->visitedFaces);
 	free(self->faceList);
-	//free(self);
+	free(self);
 }
 
 void Camera_SetPosition(Camera *self, float position[3]) {

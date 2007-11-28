@@ -64,6 +64,7 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 	int i, x;
 	tesselpatch *patch;
 
+	glDisable(GL_CULL_FACE);
 	for (i = 0; i < patches->n_patches; i++) {
 		patch = &patches->patches[i];
 
@@ -80,6 +81,7 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 				GL_UNSIGNED_INT, &patch->indexes[x * 2 * (patch->tesslevel + 1)]);
 		}
 	}
+	glEnable(GL_CULL_FACE);
 }
 
 void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
@@ -101,6 +103,8 @@ void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
 	for (i = 0; i < numfaces; i++) {
 		cface = &bsp->data.faces[facelist[i]];
 
+		if (cface->texture < 0) continue; /* Don't draw unloaded textures */
+
 		/* This face is alpha transparent wherever there is black in the image */
 		if (bsp->data.textures[cface->texture].flags & 32) {
 			glDisable(GL_CULL_FACE);
@@ -112,7 +116,7 @@ void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
 
 		/* Lightmap drawing */
 		glActiveTextureARB(GL_TEXTURE1_ARB);
-		if (cface->lm_index >= 0) {
+		if (cface->lm_index >= 0 && !(bsp->data.textures[cface->texture].flags & 4)) {
 			glBindTexture(GL_TEXTURE_2D, bsp->lightmap_indexes[cface->lm_index]);
 		}
 		else {
@@ -171,7 +175,7 @@ static void bsp_load_textures(bspfile *bsp) {
 static void bsp_load_lightmaps(bspfile *bsp) {
 	int i, x, y, z;
 	float c, scale, temp;
-	ubyte white[3] = { 220, 220, 220 };
+	ubyte white[3] = { 255, 255, 255 };
 
 	glPushAttrib(GL_TEXTURE_BIT);
 
@@ -415,6 +419,7 @@ leaf *bsp_find_leaf(bspfile *bsp, float origin[3]) {
 /* Tests whether a leaf is visible from another leaf */
 int bsp_leaf_visible(bspfile *bsp, leaf *visLeaf, leaf *testLeaf) {
 	int i;
+	if (!bsp->data.vis) return 1;
 	if (visLeaf->cluster < 0) return 0;
 	i = (visLeaf->cluster * bsp->data.vis->sz_vecs) + (testLeaf->cluster >> 3);
 	return bsp->data.vis[0].vecs[i] & (1 << (testLeaf->cluster & 7));
@@ -475,6 +480,8 @@ bspfile *bsp_load(char *filename) {
 	for (i = 0; i < BSP_NUM_LUMPS; i++) {
 		entry = &bsp->header.direntries[i];
 		len = entry->length;
+
+		if (len == 0) continue; /* Empty lump */
 
 #ifdef _PRINTDEBUG
 		printf("Lump %d: offset = 0x%X \t length = 0x%X\n", i, entry->offset, entry->length);
@@ -544,6 +551,7 @@ bspfile *bsp_load(char *filename) {
 		else if (i == BSP_VISDATA) {
 			bsp->data.vis = malloc(len);
 			bsp_readentry(fp, entry, bsp->data.vis);
+			printf("loaded visdata\n");
 		}
 		else if (i == BSP_BRUSHES) {
 			bsp->data.brushes = malloc(len);

@@ -12,8 +12,8 @@ int moving = 0;
 
 static void cleanup() {
 	bsp_free(bsp);
-	Camera_Free(camera[0]);
-	Camera_Free(camera[1]);
+	//Camera_Free(camera[0]);
+	//Camera_Free(camera[1]);
 	exit(0);
 }
 
@@ -28,16 +28,22 @@ static void display(void) {
 
 	if (moving) {
 		Camera_MoveInDirection(camera[0], dir / 5);
-		Camera_SetPosition(camera[1], camera[0]->position);
+		if (camera[1]) Camera_SetPosition(camera[1], camera[0]->position);
 	}
 
-	glViewport(0, height/2, width, height/2);
-	camera[0]->aspectRatio = 2 * width / height;
-	Camera_Render(camera[0]);
+	if (camera[1]) {
+		glViewport(0, height/2, width, height/2);
+		camera[0]->aspectRatio = 2 * width / height;
+		Camera_Render(camera[0]);
 
-	glViewport(0, 0, width, height/2);
-	camera[1]->aspectRatio = 2 * width / height;
-	Camera_Render(camera[1]);
+		glViewport(0, 0, width, height/2);
+		camera[1]->aspectRatio = 2 * width / height;
+		Camera_Render(camera[1]);
+	}
+	else {
+		camera[0]->aspectRatio = 2 * width / height;
+		Camera_Render(camera[0]);
+	}
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -59,8 +65,10 @@ static void mouse(int x, int y) {
 	b = y - height/2;
 	camera[0]->viewAngles[0] += a - lastx;
 	camera[0]->viewAngles[1] += b - lasty;
-	camera[1]->viewAngles[0] += a - lastx;
-	camera[1]->viewAngles[1] -= b - lasty;
+	if (camera[1]) {
+		camera[1]->viewAngles[0] += a - lastx;
+		camera[1]->viewAngles[1] -= b - lasty;
+	}
 	lastx = a;
 	lasty = b;
 
@@ -73,11 +81,11 @@ static void key(unsigned char key, int x, int y) {
 	}
 	if (key == 'd') {
 		camera[0]->viewAngles[0] -= 1;
-		camera[1]->viewAngles[0] -= 1;
+		if (camera[1]) camera[1]->viewAngles[0] -= 1;
 	}
 	if (key == 'a') {
 		camera[0]->viewAngles[0] += 1;
-		camera[1]->viewAngles[0] -= 1;
+		if (camera[1]) camera[1]->viewAngles[0] -= 1;
 	}
 	if (key == 's') {
 		dir = -1;
@@ -158,12 +166,13 @@ static void init_gl() {
 static void init_game() {
 	float origin[] = { 0.0f, 1.0f, 0.0f };
 
-	bsp = bsp_load("maps/pdmq3paper2.bsp");
+	bsp = bsp_load("maps/tankracer.bsp");
 	if (!bsp) {
 		exit(1);
 	}
 	
 	camera[0] = malloc(sizeof(Camera));
+	camera[1] = NULL;
 	camera[1] = malloc(sizeof(Camera));
 	Camera_Init(camera[0], bsp);
 	Camera_Move(camera[0], origin);
