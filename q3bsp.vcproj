@@ -188,7 +188,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\game.h"
+				>
+			</File>
+			<File
+				RelativePath=".\keyboard.h"
+				>
+			</File>
+			<File
 				RelativePath=".\object.h"
+				>
+			</File>
+			<File
+				RelativePath=".\tank.h"
 				>
 			</File>
 		</Filter>
@@ -286,10 +298,6 @@
 					RelativePath=".\tank.c"
 					>
 				</File>
-				<File
-					RelativePath=".\tank.h"
-					>
-				</File>
 				<Filter
 					Name="cowtank"
 					>
@@ -299,6 +307,14 @@
 					</File>
 				</Filter>
 			</Filter>
+		</Filter>
+		<Filter
+			Name="input"
+			>
+			<File
+				RelativePath=".\keyboard.c"
+				>
+			</File>
 		</Filter>
 		<File
 			RelativePath=".\bsp.c"
@@ -310,6 +326,10 @@
 		</File>
 		<File
 			RelativePath=".\common.c"
+			>
+		</File>
+		<File
+			RelativePath=".\game.c"
 			>
 		</File>
 		<File

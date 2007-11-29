@@ -24,7 +24,6 @@ extern void Tank_Init(Tank *tank);
 
 /* Name your tanks! */
 extern void Cowtank_Init(Tank *tank);
-extern void NadimsTank_Init(Tank *tank);
 /* etc */
 
 #ifdef __CPLUSPLUS

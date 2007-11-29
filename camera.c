@@ -36,14 +36,9 @@ void Camera_Free(Camera *self) {
 	free(self);
 }
 
-void Camera_SetPosition(Camera *self, float position[3]) {
+void Camera_SetPosition(Camera *self, float position[3], float direction[3]) {
 	vec3f_set(position, self->position);
-	Camera_GenerateFaceList(self);
-}
-
-void Camera_SetViewAngles(Camera *self, float yaw, float pitch) {
-	self->viewAngles[0] = yaw;
-	self->viewAngles[1] = pitch;
+	vec3f_set(direction, self->direction);
 	Camera_GenerateFaceList(self);
 }
 
@@ -76,9 +71,9 @@ void Camera_Move(Camera *self, float direction[3]) {
 
 void Camera_MoveInDirection(Camera *self, float scale) {
 	float dir[] = {
-		scale * cosd(self->viewAngles[0]),
-		scale * tand(self->viewAngles[1]),
-		scale * sind(self->viewAngles[0])
+		scale * self->direction[0],
+		scale * self->direction[1],
+		scale * self->direction[2]
 	};
 	Camera_Move(self, dir);
 }
@@ -91,21 +86,19 @@ void Camera_Render(Camera *self) {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	glColor3d(1, 1, 1);
-
 	gluLookAt(
 		self->position[0], 
 		self->position[1], 
 		self->position[2], 
-		self->position[0] + cosd(self->viewAngles[0]), 
-		self->position[1] + tand(self->viewAngles[1]), 
-		self->position[2] + sind(self->viewAngles[0]), 
+		self->position[0] + self->direction[0], 
+		self->position[1] + self->direction[1], 
+		self->position[2] + self->direction[2], 
 		self->upAngles[0],
 		self->upAngles[1],
 		self->upAngles[2]
 	);
 
-	Camera_SetFrustum(self);
+//	Camera_SetFrustum(self);
 
 	bsp_draw_faces(self->bsp, self->faceList, self->numFaces);
 }

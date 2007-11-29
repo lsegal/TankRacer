@@ -1,121 +1,24 @@
 #include "common.h"
 #include "bsp.h"
-#include "camera.h"
+#include "game.h"
 
 #ifdef WIN32
 #	include "extensions/ARB_multitexture_extension.h"
 #endif
 
-float width, height;
-bspfile *bsp;
-Camera  *camera[2];
-
-float dir = 1;
-int moving = 0;
-
-static void cleanup() {
-	bsp_free(bsp);
-	//Camera_Free(camera[0]);
-	//Camera_Free(camera[1]);
-	exit(0);
+static void resize(int w, int h) {
+	Game_Resize(w, h);
 }
 
-static void reshape(int w, int h) {
-	glViewport(0, 0, w, h);
-	width = w;
-	height = h;
+static void run(void) {
+	Game_Run();
+	glutPostRedisplay();
 }
 
-static void display(void) {
+static void render(void) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	if (moving) {
-		Camera_MoveInDirection(camera[0], dir / 5);
-		if (camera[1]) Camera_SetPosition(camera[1], camera[0]->position);
-	}
-
-	if (camera[1]) {
-		glViewport(0, height/2, width, height/2);
-		camera[0]->aspectRatio = 2 * width / height;
-		Camera_Render(camera[0]);
-
-		glViewport(0, 0, width, height/2);
-		camera[1]->aspectRatio = 2 * width / height;
-		Camera_Render(camera[1]);
-	}
-	else {
-		camera[0]->aspectRatio = 2 * width / height;
-		Camera_Render(camera[0]);
-	}
-
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(0, width, 0, height);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glColor3d(1, 0, 0);
-	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", 
-		camera[0]->position[0], camera[0]->position[1], camera[0]->position[2]);
-
+	Game_Render();
 	glutSwapBuffers();
-}
-
-int lastx = 0, lasty = 0;
-static void mouse(int x, int y) {
-	double a, b;
-	a = x - width/2;
-	b = y - height/2;
-	camera[0]->viewAngles[0] += a - lastx;
-	camera[0]->viewAngles[1] += b - lasty;
-	if (camera[1]) {
-		camera[1]->viewAngles[0] += a - lastx;
-		camera[1]->viewAngles[1] -= b - lasty;
-	}
-	lastx = a;
-	lasty = b;
-
-	glutPostRedisplay();
-}
-
-static void key(unsigned char key, int x, int y) {
-	if (key == 27) {
-		cleanup();
-	}
-	if (key == 'd') {
-		camera[0]->viewAngles[0] -= 1;
-		if (camera[1]) camera[1]->viewAngles[0] -= 1;
-	}
-	if (key == 'a') {
-		camera[0]->viewAngles[0] += 1;
-		if (camera[1]) camera[1]->viewAngles[0] -= 1;
-	}
-	if (key == 's') {
-		dir = -1;
-		moving = 1;
-	}
-	if (key == 'w') {
-		dir = 1;
-		moving = 1;
-	}
-}
-
-static void keyup(unsigned char key, int x, int y) {
-	if (key == 's') {
-		moving = 0;
-	}
-	if (key == 'w') {
-		moving = 0;
-	}
-}
-
-
-static void mousebutton(int button, int state, int x, int y) {
-	if (button == GLUT_RIGHT_BUTTON) {
-		dir = 1;
-		moving = (state == GLUT_DOWN ? 1 : 0);
-	}
-	glutPostRedisplay();
 }
 
 static void init_gl() {
@@ -123,13 +26,9 @@ static void init_gl() {
 	glutInitWindowSize(800, 600);
 	glutInitWindowPosition(600, 150);
 	glutCreateWindow("Quake3BSP");
-	glutDisplayFunc(display);
-	glutIdleFunc(display);
-	glutReshapeFunc(reshape);
-	glutPassiveMotionFunc(mouse);
-	glutKeyboardFunc(key);
-	glutKeyboardUpFunc(keyup);
-	glutMouseFunc(mousebutton);
+	glutIdleFunc(run);
+	glutDisplayFunc(render);
+	glutReshapeFunc(resize);
 
 #ifdef WIN32
 	/* Initialize GL extensions */
@@ -168,28 +67,10 @@ static void init_gl() {
 	glCullFace(GL_BACK);
 }
 
-static void init_game() {
-	float origin[] = { 0.0f, 1.0f, 0.0f };
-
-	bsp = bsp_load("maps/tankracer.bsp");
-	if (!bsp) {
-		exit(1);
-	}
-	
-	camera[0] = malloc(sizeof(Camera));
-	camera[1] = NULL;
-	camera[1] = malloc(sizeof(Camera));
-	Camera_Init(camera[0], bsp);
-	Camera_Move(camera[0], origin);
-	Camera_Init(camera[1], bsp);
-	Camera_Move(camera[1], origin);
-	camera[1]->viewAngles[0] = 180;
-}
-
 int main(int argc, char **argv) {
 	glutInit(&argc, argv);
 	init_gl();
-	init_game();
+	Game_Init();
 
 	glutMainLoop();
 

@@ -388,7 +388,7 @@ static void bsp_load_faces(bspfile *bsp) {
 						}
 					}
 
-					bsp_tesselate_patch(bsp, patch, 10);
+					bsp_tesselate_patch(bsp, patch, 14);
 				}
 			}
 		}

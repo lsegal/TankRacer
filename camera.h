@@ -4,11 +4,11 @@
 #include "bsp.h"
 
 typedef struct Camera {
-	float		position[3];
-	float		viewAngles[3];
-	float		upAngles[3];
-	float		fov;
-	float		aspectRatio;
+	float		position[3];	/* Camera position */
+	float		direction[3];	/* Look direction  */
+	float		upAngles[3];	
+	float		fov;			/* Field of view */
+	float		aspectRatio;	/* Aspect ratio */
 
 	bspfile		*bsp;
 	leaf		*currentLeaf;
@@ -21,8 +21,7 @@ typedef struct Camera {
 
 void Camera_Init(Camera *, bspfile *);
 void Camera_Free(Camera *);
-void Camera_SetViewAngles(Camera *, float, float);
-void Camera_SetPosition(Camera *, float[3]);
+void Camera_SetPosition(Camera *, float[3], float[3]);
 void Camera_Move(Camera *, float[3]);
 void Camera_MoveInDirection(Camera *, float);
 void Camera_Render(Camera *);
