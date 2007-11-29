@@ -7,7 +7,7 @@ static void VerticalFlip(tImageTGA *image)
 	int i;
 	int numrows;	/* Number of rows to flip */
 	int rowlen;		/* The length in bytes of a row */
-	byte *row;		/* One row of data */
+	ubyte *row;		/* One row of data */
 
 	if (image->sizeY < 2) return;
 
@@ -30,10 +30,10 @@ static void VerticalFlip(tImageTGA *image)
 tImageTGA *LoadTGA(const char *filename)
 {
 	tImageTGA *pImageData = NULL;		// This stores our important image data
-	WORD width = 0, height = 0;			// The dimensions of the image
-	byte length = 0;					// The length in bytes to the pixels
-	byte imageType = 0;					// The image type (RLE, RGB, Alpha...)
-	byte bits = 0;						// The bits per pixel for the image (16, 24, 32)
+	int width = 0, height = 0;			// The dimensions of the image
+	ubyte length = 0;					// The length in bytes to the pixels
+	ubyte imageType = 0;				// The image type (RLE, RGB, Alpha...)
+	ubyte bits = 0;						// The bits per pixel for the image (16, 24, 32)
 	FILE *pFile = NULL;					// The file pointer
 	int channels = 0;					// The channels of the image (3 = RGA : 4 = RGBA)
 	int stride = 0;						// The stride (channels * width)
@@ -63,21 +63,21 @@ tImageTGA *LoadTGA(const char *filename)
 	pImageData = (tImageTGA*)malloc(sizeof(tImageTGA));
 
 	// Read in the length in bytes from the header to the pixel data
-	fread(&length, sizeof(byte), 1, pFile);
+	fread(&length, sizeof(ubyte), 1, pFile);
 	
 	// Jump over one byte
 	fseek(pFile,1,SEEK_CUR); 
 
 	// Read in the imageType (RLE, RGB, etc...)
-	fread(&imageType, sizeof(byte), 1, pFile);
+	fread(&imageType, sizeof(ubyte), 1, pFile);
 	
 	// Skip past general information we don't care about
 	fseek(pFile, 9, SEEK_CUR); 
 
 	// Read the width, height and bits per pixel (16, 24 or 32)
-	fread(&width,  sizeof(WORD), 1, pFile);
-	fread(&height, sizeof(WORD), 1, pFile);
-	fread(&bits,   sizeof(byte), 1, pFile);
+	fread(&width,  sizeof(int), 1, pFile);
+	fread(&height, sizeof(int), 1, pFile);
+	fread(&bits,   sizeof(ubyte), 1, pFile);
 	
 	// Now we move the file pointer to the pixel data
 	fseek(pFile, length + 1, SEEK_CUR); 
@@ -172,8 +172,8 @@ tImageTGA *LoadTGA(const char *filename)
 		// It's 127 because we add 1 to the color count, as you'll notice in the code.
 
 		// Create some variables to hold the rleID, current colors read, channels, & stride.
-		byte *pColors;
-		byte rleID = 0;
+		ubyte *pColors;
+		ubyte rleID = 0;
 		int colorsRead = 0;
 		channels = bits / 8;
 		stride = channels * width;
@@ -187,7 +187,7 @@ tImageTGA *LoadTGA(const char *filename)
 		while(i < width*height)
 		{
 			// Read in the current color count + 1
-			fread(&rleID, sizeof(byte), 1, pFile);
+			fread(&rleID, sizeof(ubyte), 1, pFile);
 			
 			// Check if we don't have an encoded string of colors
 			if(rleID < 128)
@@ -199,7 +199,7 @@ tImageTGA *LoadTGA(const char *filename)
 				while(rleID)
 				{
 					// Read in the current color
-					fread(pColors, sizeof(byte) * channels, 1, pFile);
+					fread(pColors, sizeof(ubyte) * channels, 1, pFile);
 
 					// Store the current pixel in our image array
 					pImageData->data[colorsRead + 0] = pColors[2];
@@ -224,7 +224,7 @@ tImageTGA *LoadTGA(const char *filename)
 				rleID -= 127;
 
 				// Read in the current color, which is the same for a while
-				fread(pColors, sizeof(byte) * channels, 1, pFile);
+				fread(pColors, sizeof(ubyte) * channels, 1, pFile);
 
 				// Go and read as many pixels as are the same
 				while(rleID)

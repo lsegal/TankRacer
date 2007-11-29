@@ -3,7 +3,7 @@
 
 static const enum BoxSides { 
 	SIDE_RIGHT, SIDE_LEFT, SIDE_BOTTOM, SIDE_TOP, SIDE_FAR, SIDE_NEAR 
-};
+} BoxSides;
 
 static int  Camera_FaceSort(const void *a, const void *b);
 static void Camera_GenerateFaceList(Camera *self);

@@ -1,7 +1,10 @@
 #include "common.h"
 #include "bsp.h"
 #include "camera.h"
-#include "extensions/ARB_multitexture_extension.h"
+
+#ifdef WIN32
+#	include "extensions/ARB_multitexture_extension.h"
+#endif
 
 float width, height;
 bspfile *bsp;
@@ -128,8 +131,10 @@ static void init_gl() {
 	glutKeyboardUpFunc(keyup);
 	glutMouseFunc(mousebutton);
 
+#ifdef WIN32
 	/* Initialize GL extensions */
 	SetUpARB_multitexture();
+#endif
 
 	/* Initialize basic clear colour/depth setting */
     glClearColor(0.0, 0.0, 0.0, 0.0);

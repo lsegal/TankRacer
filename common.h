@@ -1,11 +1,26 @@
-#include <windows.h>
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include "glext.h"
-#include "glut.h"
+#ifdef WIN32
+#	include <windows.h>
+#else
+#	define BOOL int
+#	define FALSE 0
+#	define TRUE  1
+#endif
+
+#ifdef __APPLE__
+#	define  GL_EXT_texture_env_combine 1
+#	include <OpenGL/gl.h>
+#	include <OpenGL/glu.h>
+#	include	<OpenGL/glext.h>
+#	include <GLUT/glut.h>
+#else
+#	include <GL/gl.h>
+#	include <GL/glu.h>
+#	include "glut.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <memory.h>
 
 #pragma comment(lib, "libjpeg.lib")
 #pragma comment(lib, "glut32.lib")

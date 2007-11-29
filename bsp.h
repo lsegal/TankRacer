@@ -22,14 +22,14 @@ const enum direntrynames {
 	BSP_LIGHTVOLS,
 	BSP_VISDATA,
 	BSP_NUM_LUMPS
-};
+} dirtentrynames;
 
 const enum facetypes {
 	FACE_POLYGON = 1,
 	FACE_PATCH,
 	FACE_MESH,
 	FACE_BILLBOARD
-};
+} facetypes;
 
 typedef struct direntry {
 	int offset;

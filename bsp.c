@@ -1,7 +1,10 @@
 #include "common.h"
 #include "bsp.h"
 #include "jpeg.h"
-#include "extensions/ARB_multitexture_extension.h"
+
+#ifdef WIN32
+#	include "extensions/ARB_multitexture_extension.h"
+#endif
 
 static int whiteLightmap;
 
@@ -158,12 +161,12 @@ static void bsp_load_textures(bspfile *bsp) {
 
 	for (x = 0; x < bsp->data.n_textures; x++) {
 		/* Attempt to load texture as jpeg */
-		strncpy(full_texname, bsp->data.textures[x].name, 64);
+		strncpy(full_texname, (char *)&bsp->data.textures[x].name, 64);
 		strncat(full_texname, ".jpg", 4);
 		tex = load_texture_jpeg(full_texname);
 
 		if (tex == -1) { /* Attempt to load texture as .tga */
-			strncpy(full_texname, bsp->data.textures[x].name, 64);
+			strncpy(full_texname, (char *)&bsp->data.textures[x].name, 64);
 			strncat(full_texname, ".tga", 4);
 			tex = load_texture_tga(full_texname);
 		}
@@ -200,7 +203,7 @@ static void bsp_load_lightmaps(bspfile *bsp) {
 			}
 		}
 
-		glGenTextures(1, &bsp->lightmap_indexes[i]);
+		glGenTextures(1, (GLuint*)&bsp->lightmap_indexes[i]);
 		glBindTexture(GL_TEXTURE_2D, bsp->lightmap_indexes[i]);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -211,7 +214,7 @@ static void bsp_load_lightmaps(bspfile *bsp) {
 	}
 
 	/* Generate a white lightmap for unlit textures */
-	glGenTextures(1, &whiteLightmap);
+	glGenTextures(1, (GLuint*)&whiteLightmap);
 	glBindTexture(GL_TEXTURE_2D, whiteLightmap);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
