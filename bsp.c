@@ -66,7 +66,6 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 	int i, x;
 	tesselpatch *patch;
 
-	glDisable(GL_CULL_FACE);
 	for (i = 0; i < patches->n_patches; i++) {
 		patch = &patches->patches[i];
 
@@ -83,7 +82,6 @@ static void bsp_draw_patch(bspfile *bsp, patchlist *patches) {
 				GL_UNSIGNED_INT, &patch->indexes[x * 2 * (patch->tesslevel + 1)]);
 		}
 	}
-	glEnable(GL_CULL_FACE);
 }
 
 void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
@@ -388,7 +386,7 @@ static void bsp_load_faces(bspfile *bsp) {
 						}
 					}
 
-					bsp_tesselate_patch(bsp, patch, 14);
+					bsp_tesselate_patch(bsp, patch, 10);
 				}
 			}
 		}
