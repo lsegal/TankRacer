@@ -15,6 +15,6 @@ typedef struct tImageTGA
 	unsigned char *data;	// The image pixel data
 } tImageTGA;
 
-tImageTGA *LoadTGA(const char *filename);
+tImageTGA *LoadTGA(const char *);
 
 #endif

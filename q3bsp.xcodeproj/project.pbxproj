@@ -15,11 +15,11 @@
 		B744A6740CFE33CD006C1DAA /* common.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A6660CFE33CD006C1DAA /* common.c */; };
 		B744A6750CFE33CD006C1DAA /* common.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = B744A6670CFE33CD006C1DAA /* common.h */; };
 		B744A67B0CFE33CD006C1DAA /* tga.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A66D0CFE33CD006C1DAA /* tga.c */; };
-		B744A67C0CFE33CD006C1DAA /* tgalib.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A66E0CFE33CD006C1DAA /* tgalib.c */; };
-		B744A67D0CFE33CD006C1DAA /* tgalib.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = B744A66F0CFE33CD006C1DAA /* tgalib.h */; };
 		B744A6AE0CFE3525006C1DAA /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A6AD0CFE3525006C1DAA /* main.c */; };
 		B744A6C40CFE3621006C1DAA /* jpeg.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A66A0CFE33CD006C1DAA /* jpeg.c */; settings = {COMPILER_FLAGS = "-I/usr/local/include"; }; };
-		B744A7060CFE3D10006C1DAA /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B744A7050CFE3D10006C1DAA /* libjpeg.a */; };
+		B744A7820CFE47FA006C1DAA /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B744A7810CFE47FA006C1DAA /* libjpeg.a */; };
+		B744A7CE0CFE4BCB006C1DAA /* tgalib.c in Sources */ = {isa = PBXBuildFile; fileRef = B744A7CD0CFE4BCB006C1DAA /* tgalib.c */; };
+		B744A7D00CFE4BCF006C1DAA /* tgalib.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = B744A7CF0CFE4BCF006C1DAA /* tgalib.h */; };
 		B7627A9E0CFE0D00000D3FA2 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7627A9D0CFE0D00000D3FA2 /* OpenGL.framework */; };
 		B7627AA20CFE0D0C000D3FA2 /* GLUT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B7627AA10CFE0D0C000D3FA2 /* GLUT.framework */; };
 /* End PBXBuildFile section */
@@ -35,7 +35,7 @@
 				B744A6710CFE33CD006C1DAA /* bsp.h in CopyFiles */,
 				B744A6730CFE33CD006C1DAA /* camera.h in CopyFiles */,
 				B744A6750CFE33CD006C1DAA /* common.h in CopyFiles */,
-				B744A67D0CFE33CD006C1DAA /* tgalib.h in CopyFiles */,
+				B744A7D00CFE4BCF006C1DAA /* tgalib.h in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -51,10 +51,10 @@
 		B744A6670CFE33CD006C1DAA /* common.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 		B744A66A0CFE33CD006C1DAA /* jpeg.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = jpeg.c; sourceTree = "<group>"; };
 		B744A66D0CFE33CD006C1DAA /* tga.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = tga.c; sourceTree = "<group>"; };
-		B744A66E0CFE33CD006C1DAA /* tgalib.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = tgalib.c; sourceTree = "<group>"; };
-		B744A66F0CFE33CD006C1DAA /* tgalib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = tgalib.h; sourceTree = "<group>"; };
 		B744A6AD0CFE3525006C1DAA /* main.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
-		B744A7050CFE3D10006C1DAA /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libjpeg.a; sourceTree = "<group>"; };
+		B744A7810CFE47FA006C1DAA /* libjpeg.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjpeg.a; path = libjpeg/libjpeg.a; sourceTree = "<group>"; };
+		B744A7CD0CFE4BCB006C1DAA /* tgalib.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = tgalib.c; path = tgalib/tgalib.c; sourceTree = "<group>"; };
+		B744A7CF0CFE4BCF006C1DAA /* tgalib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = tgalib.h; path = tgalib/tgalib.h; sourceTree = "<group>"; };
 		B7627A9D0CFE0D00000D3FA2 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		B7627AA10CFE0D0C000D3FA2 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = /System/Library/Frameworks/GLUT.framework; sourceTree = "<absolute>"; };
 		C6A0FF2C0290799A04C91782 /* q3bsp.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = q3bsp.1; sourceTree = "<group>"; };
@@ -67,7 +67,7 @@
 			files = (
 				B7627A9E0CFE0D00000D3FA2 /* OpenGL.framework in Frameworks */,
 				B7627AA20CFE0D0C000D3FA2 /* GLUT.framework in Frameworks */,
-				B744A7060CFE3D10006C1DAA /* libjpeg.a in Frameworks */,
+				B744A7820CFE47FA006C1DAA /* libjpeg.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,7 +77,7 @@
 		08FB7794FE84155DC02AAC07 /* q3bsp */ = {
 			isa = PBXGroup;
 			children = (
-				B744A7050CFE3D10006C1DAA /* libjpeg.a */,
+				B744A7810CFE47FA006C1DAA /* libjpeg.a */,
 				B7627AA10CFE0D0C000D3FA2 /* GLUT.framework */,
 				B7627A9D0CFE0D00000D3FA2 /* OpenGL.framework */,
 				08FB7795FE84155DC02AAC07 /* Source */,
@@ -90,6 +90,8 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				B744A7CF0CFE4BCF006C1DAA /* tgalib.h */,
+				B744A7CD0CFE4BCB006C1DAA /* tgalib.c */,
 				B744A6AD0CFE3525006C1DAA /* main.c */,
 				B744A6620CFE33CD006C1DAA /* bsp.c */,
 				B744A6630CFE33CD006C1DAA /* bsp.h */,
@@ -99,8 +101,6 @@
 				B744A6670CFE33CD006C1DAA /* common.h */,
 				B744A66A0CFE33CD006C1DAA /* jpeg.c */,
 				B744A66D0CFE33CD006C1DAA /* tga.c */,
-				B744A66E0CFE33CD006C1DAA /* tgalib.c */,
-				B744A66F0CFE33CD006C1DAA /* tgalib.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -167,8 +167,8 @@
 				B744A6740CFE33CD006C1DAA /* common.c in Sources */,
 				B744A6C40CFE3621006C1DAA /* jpeg.c in Sources */,
 				B744A67B0CFE33CD006C1DAA /* tga.c in Sources */,
-				B744A67C0CFE33CD006C1DAA /* tgalib.c in Sources */,
 				B744A6AE0CFE3525006C1DAA /* main.c in Sources */,
+				B744A7CE0CFE4BCB006C1DAA /* tgalib.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -187,8 +187,10 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/libjpeg\"";
 				PRODUCT_NAME = q3bsp;
 				ZERO_LINK = YES;
 			};
@@ -207,8 +209,10 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/libjpeg\"";
 				PRODUCT_NAME = q3bsp;
 			};
 			name = Release;

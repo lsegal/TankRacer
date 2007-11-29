@@ -1,5 +1,5 @@
 #include "common.h"
-#include "tgalib.h"
+#include "tgalib/tgalib.h"
 
 int load_texture_tga(char *filename) {
 	int texture, format;
@@ -22,7 +22,7 @@ int load_texture_tga(char *filename) {
 	}
 
 	/* Get a texture */
-    glGenTextures(1, &texture);
+    glGenTextures(1, (GLuint*)&texture);
 
 	/* Set texture parameters */
 	glPushAttrib(GL_TEXTURE_BIT);
