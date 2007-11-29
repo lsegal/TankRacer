@@ -55,3 +55,6 @@ extern float  vec3f_classify(float[3], float[3], float);
 extern float *mat4f_mult(float[16], float[16], float[16]);
 
 extern void  text_output(int, int, char *, ...);
+
+extern int	 load_texture_jpeg(char *);
+extern int   load_texture_tga(char *);

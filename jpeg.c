@@ -1,6 +1,10 @@
 #include "common.h"
-#include "jpeglib.h"
-#include "jpeg.h"
+
+#ifdef WIN32
+#	include "jpeglib.h"
+#else
+#	include	<jpeglib.h>
+#endif
 
 int load_texture_jpeg(char *filename) {
 	unsigned int format, texture, stride;

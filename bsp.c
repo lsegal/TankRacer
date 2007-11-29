@@ -1,6 +1,5 @@
 #include "common.h"
 #include "bsp.h"
-#include "jpeg.h"
 
 #ifdef WIN32
 #	include "extensions/ARB_multitexture_extension.h"
