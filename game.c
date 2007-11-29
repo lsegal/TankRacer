@@ -60,6 +60,18 @@ static void Game_HandleKeys() {
 	if (Keyboard_GetState('s', TRUE, FALSE)) {
 		playerList[0].tank.obj.position[0] -= 0.2;
 	}
+	if (Keyboard_GetState('a', TRUE, FALSE)) {
+		playerList[0].tank.obj.position[2] -= 0.2;
+	}
+	if (Keyboard_GetState('d', TRUE, FALSE)) {
+		playerList[0].tank.obj.position[2] += 0.2;
+	}
+	if (Keyboard_GetState('g', TRUE, FALSE)) {
+		playerList[0].tank.obj.position[1] += 0.2;
+	}
+	if (Keyboard_GetState('b', TRUE, FALSE)) {
+		playerList[0].tank.obj.position[1] -= 0.2;
+	}
 }
 
 void Game_Run() {
@@ -91,10 +103,12 @@ static void Game_Set_Camera(int playerNum) {
 
 static void Game_Render_Scene(int playerNum) {
 	Tank *tank;
+	lightvol *light;
 	int i;
+	float pos[3], amb[3], diff[3];
 
 	/* Set the viewport in the window */
-	glViewport(0, playerNum * (windowHeight/(float)numPlayers), 
+	glViewport(0, (numPlayers - playerNum - 1) * (windowHeight/(float)numPlayers), 
 		windowWidth, (windowHeight/(float)numPlayers));
 	
 	glColor3d(0.8, 1, 0.7);
@@ -112,10 +126,50 @@ static void Game_Render_Scene(int playerNum) {
 
 		glPushMatrix();
 		glTranslatef(tank->obj.position[0], tank->obj.position[1], tank->obj.position[2]);
+
+		/* Find out if there is lightvol info at the point */
+		light = bsp_lightvol(bsp, tank->obj.position);
+		if (light) {
+			glEnable(GL_LIGHTING);
+			glEnable(GL_LIGHT0);
+
+			pos[0] = 2.4 * cosd((float)light->dir[1] * 360.0 / 255.0);
+			pos[1] = 2.4 * cosd((float)light->dir[0] * 360.0 / 255.0);
+			pos[2] = 2.4 * -sind((float)light->dir[1] * 360.0 / 255.0);
+			/*
+			sprintf(playerList[i].centerText, "angle(%.2f, %.2f) -> pos(%.2f, %.2f, %.2f)",
+				(float)light->dir[0] * 360.0 / 255.0, 
+				(float)light->dir[1] * 360.0 / 255.0, 
+				pos[0], pos[1], pos[2]);
+			*/
+			glPushMatrix();
+			glTranslatef(pos[0], pos[1], pos[2]);
+			pos[0] = 0; pos[1] = 0; pos[2] = 0;
+			glLightfv(GL_LIGHT0, GL_POSITION, pos);
+			glPopMatrix();
+
+			diff[0] = (float)light->directional[0] / 255.0;
+			diff[1] = (float)light->directional[1] / 255.0;
+			diff[2] = (float)light->directional[2] / 255.0;
+			glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
+			glLightfv(GL_LIGHT0, GL_SPECULAR, diff);
+
+			amb[0] = (float)light->ambient[0] / 255.0;
+			amb[1] = (float)light->ambient[1] / 255.0;
+			amb[2] = (float)light->ambient[2] / 255.0;
+			glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
+		}
+
 		glRotatef(180, 0, 1, 0);
+		//glRotated(frame, 1, 0, 0);
 		glScalef(2, 2, 2);
 		tank->obj.drawFunc(&tank->obj, tank->obj.funcData);
 		glPopMatrix();
+
+		if (light) {
+			glDisable(GL_LIGHTING);
+			glDisable(GL_LIGHT0);
+		}
 	}
 }
 
@@ -130,8 +184,13 @@ static void Game_Render_Overlay(int playerNum) {
 	glLoadIdentity();
 
 	glColor3d(1, 0, 0);
+	text_output(2, 92, "Player %d", playerNum+1);
+
 	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", 
 		camera->position[0], camera->position[1], camera->position[2]);
+
+	glColor3d(1,1,1);
+	text_output(2, 50, playerList[playerNum].centerText);
 }
 
 void Game_Render() {

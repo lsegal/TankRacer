@@ -5,6 +5,9 @@
 typedef struct Player {
 	Camera	camera;
 	Tank	tank;
+
+	char	bottomText[128];
+	char	centerText[128];
 } Player;
 
 extern void Game_Init();

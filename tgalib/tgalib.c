@@ -30,7 +30,7 @@ static void VerticalFlip(tImageTGA *image)
 tImageTGA *LoadTGA(const char *filename)
 {
 	tImageTGA *pImageData = NULL;		// This stores our important image data
-	int width = 0, height = 0;			// The dimensions of the image
+	short width = 0, height = 0;		// The dimensions of the image
 	ubyte length = 0;					// The length in bytes to the pixels
 	ubyte imageType = 0;				// The image type (RLE, RGB, Alpha...)
 	ubyte bits = 0;						// The bits per pixel for the image (16, 24, 32)
@@ -75,8 +75,8 @@ tImageTGA *LoadTGA(const char *filename)
 	fseek(pFile, 9, SEEK_CUR); 
 
 	// Read the width, height and bits per pixel (16, 24 or 32)
-	fread(&width,  sizeof(int), 1, pFile);
-	fread(&height, sizeof(int), 1, pFile);
+	fread(&width,  sizeof(short), 1, pFile);
+	fread(&height, sizeof(short), 1, pFile);
 	fread(&bits,   sizeof(ubyte), 1, pFile);
 	
 	// Now we move the file pointer to the pixel data

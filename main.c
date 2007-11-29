@@ -36,7 +36,7 @@ static void init_gl() {
 #endif
 
 	/* Initialize basic clear colour/depth setting */
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(1.0, 1.0, 1.0, 0.0);
 	
 	/* Enable texturing */
 	glEnable(GL_TEXTURE_2D);

@@ -425,6 +425,7 @@ int bsp_leaf_visible(bspfile *bsp, leaf *visLeaf, leaf *testLeaf) {
 	return bsp->data.vis[0].vecs[i] & (1 << (testLeaf->cluster & 7));
 }
 
+/* Tests if a line passes through a brush */
 plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1, leaf *leaf2) {
 	int i, j, n, count = 2;
 	float d1, d2;
@@ -462,6 +463,26 @@ plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1,
 	return NULL;
 }
 
+lightvol *bsp_lightvol(bspfile *bsp, float pos[3]) {
+	/* Max grid values */
+	int nx = floor(bsp->data.models[0].maxs[0] / 64) - ceil(bsp->data.models[0].mins[0] / 64) + 1;
+	int ny = floor(bsp->data.models[0].maxs[1] / 64) - ceil(bsp->data.models[0].mins[1] / 64) + 1;
+	int nz = floor(bsp->data.models[0].maxs[2] / 128) - ceil(bsp->data.models[0].mins[2] / 128) + 1;
+
+	/* Convert position into a grid value */
+	/* Remember to unscwivel these values! */
+	int x = floor(((pos[0] * BSP_SCALE) - bsp->data.models[0].mins[0]) / 64);
+	int y = floor(((-pos[2] * BSP_SCALE) - bsp->data.models[0].mins[1]) / 64);
+	int z = floor(((pos[1] * BSP_SCALE) - bsp->data.models[0].mins[2]) / 128);
+
+	/* Invalid indexes */
+	if (x < 0 || y < 0 || z < 0) return NULL;
+	if (x >= nx || y >= ny || z >= nz) return NULL;
+
+	return &bsp->data.lightvols[(nx*ny) * z + (nx * y) + x];
+}
+
+/* Loads a .bsp file into memory returning a memory address to allocated data */
 bspfile *bsp_load(char *filename) {
 	int i, len;
 	bspfile *bsp;
@@ -487,6 +508,11 @@ bspfile *bsp_load(char *filename) {
 		printf("Lump %d: offset = 0x%X \t length = 0x%X\n", i, entry->offset, entry->length);
 #endif
 
+		if (i == BSP_MODELS) {
+			bsp->data.models = malloc(len);
+			bsp->data.n_models = len / sizeof(model);
+			bsp_readentry(fp, entry, bsp->data.models);
+		}
 		if (i == BSP_TEXTURES) {
 			bsp->data.textures = malloc(len);
 			bsp->data.n_textures = len / sizeof(texture);
@@ -502,6 +528,11 @@ bspfile *bsp_load(char *filename) {
 
 			bsp->lightmap_indexes = malloc(bsp->data.n_lightmaps * sizeof(int));
 			bsp_load_lightmaps(bsp);
+		}
+		else if (i == BSP_LIGHTVOLS) {
+			bsp->data.lightvols = malloc(len);
+			bsp->data.n_lightvols = len / sizeof(lightvol);
+			bsp_readentry(fp, entry, bsp->data.lightvols);			
 		}
 		else if (i == BSP_VERTEXES) {
 			bsp->data.vertexes = malloc(len);
