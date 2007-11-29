@@ -188,7 +188,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\jpeg.h"
+				RelativePath=".\object.h"
 				>
 			</File>
 		</Filter>
@@ -268,9 +268,37 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath=".\raw.c"
+				>
+			</File>
+			<File
 				RelativePath=".\tga.c"
 				>
 			</File>
+		</Filter>
+		<Filter
+			Name="models"
+			>
+			<Filter
+				Name="tank"
+				>
+				<File
+					RelativePath=".\tank.c"
+					>
+				</File>
+				<File
+					RelativePath=".\tank.h"
+					>
+				</File>
+				<Filter
+					Name="cowtank"
+					>
+					<File
+						RelativePath=".\cowtank.c"
+						>
+					</File>
+				</Filter>
+			</Filter>
 		</Filter>
 		<File
 			RelativePath=".\bsp.c"

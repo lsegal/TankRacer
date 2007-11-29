@@ -6,8 +6,9 @@
 #	include	<jpeglib.h>
 #endif
 
-int load_texture_jpeg(char *filename) {
-	unsigned int format, texture, stride;
+GLuint load_texture_jpeg(char *filename) {
+	unsigned int format, stride;
+	GLuint texture;
 	ubyte *data, *ptr;
 	FILE *file;
 	JSAMPARRAY linebuf;
@@ -63,7 +64,7 @@ int load_texture_jpeg(char *filename) {
 	fclose(file);
 
 	/* Get a texture */
-    glGenTextures(1, (GLuint*)&texture);
+    glGenTextures(1, &texture);
 
 	/* Set texture parameters */
 	glPushAttrib(GL_TEXTURE_BIT);

@@ -43,6 +43,10 @@ typedef unsigned char ubyte;
 #define sind(n)	   sin(DEG2RAD(n))
 #define tand(n)    tan(DEG2RAD(n))
 
+/* Symbolic names for array indices */
+const enum AxisNames { X, Y, Z } AxisNames;
+const enum RotationNames { ROLL, YAW, PITCH } RotationNames;
+
 #define       vec3f_mag(vec) sqrt(vec3f_dot(vec, vec))
 #define		  vec3f_set(src, dst) vec3f_scale(src, 1.0f, dst)
 extern float  vec3f_dot(float[3], float[3]);
@@ -57,5 +61,8 @@ extern float *mat4f_mult(float[16], float[16], float[16]);
 
 extern void  text_output(int, int, char *, ...);
 
-extern int	 load_texture_jpeg(char *);
-extern int   load_texture_tga(char *);
+extern void draw_cube(double, double, double);
+
+extern GLuint load_texture_jpeg(char *);
+extern GLuint load_texture_tga(char *);
+extern GLuint load_texture_raw(const char *, int, int, int);
