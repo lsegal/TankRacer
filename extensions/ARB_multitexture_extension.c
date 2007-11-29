@@ -10,7 +10,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////	
 #include <windows.h>
 #include <GL\gl.h>
-#include "../glext.h"
+#include "../opengl/glext.h"
 #include "ARB_multitexture_extension.h"
 
 BOOL ARB_multitexture_supported = FALSE;

@@ -1,5 +1,5 @@
 /* Copyright BOINC */
-#include "common.h"
+#include "../common.h"
 #include "tgalib.h"
 
 static void VerticalFlip(tImageTGA *image) 

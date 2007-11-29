@@ -10,7 +10,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////	
 #include <windows.h>
 #include <GL\gl.h>
-#include "../glext.h"
+#include "../opengl/glext.h"
 #include "EXT_multi_draw_arrays_extension.h"
 
 BOOL EXT_multi_draw_arrays_supported = FALSE;

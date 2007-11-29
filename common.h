@@ -15,15 +15,16 @@
 #else
 #	include <GL/gl.h>
 #	include <GL/glu.h>
-#	include "glut.h"
+#	include "opengl/glut.h"
+#	include "opengl/glext.h"
 #endif
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>
 
-#pragma comment(lib, "libjpeg.lib")
-#pragma comment(lib, "glut32.lib")
+#pragma comment(lib, "libjpeg/libjpeg.lib")
+#pragma comment(lib, "opengl/glut32.lib")
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "glu32.lib")
 

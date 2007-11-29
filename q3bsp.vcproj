@@ -61,7 +61,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="glut32.lib glu32.lib opengl32.lib libjpeg.lib"
+				AdditionalDependencies="opengl/glut32.lib glu32.lib opengl32.lib libjpeg/libjpeg.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -188,15 +188,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\glext.h"
-				>
-			</File>
-			<File
 				RelativePath=".\jpeg.h"
-				>
-			</File>
-			<File
-				RelativePath=".\wglext.h"
 				>
 			</File>
 		</Filter>
@@ -207,11 +199,11 @@
 				Name="libtga"
 				>
 				<File
-					RelativePath=".\tgalib.c"
+					RelativePath=".\tgalib\tgalib.c"
 					>
 				</File>
 				<File
-					RelativePath=".\tgalib.h"
+					RelativePath=".\tgalib\tgalib.h"
 					>
 				</File>
 			</Filter>
@@ -219,21 +211,21 @@
 				Name="libjpeg"
 				>
 				<File
-					RelativePath=".\jconfig.h"
+					RelativePath=".\libjpeg\jconfig.h"
 					>
 				</File>
 				<File
-					RelativePath=".\jmorecfg.h"
+					RelativePath=".\libjpeg\jmorecfg.h"
 					>
 				</File>
 				<File
-					RelativePath=".\jpeglib.h"
+					RelativePath=".\libjpeg\jpeglib.h"
 					>
 				</File>
 			</Filter>
 		</Filter>
 		<Filter
-			Name="glext"
+			Name="extensions"
 			>
 			<File
 				RelativePath=".\extensions\ARB_multitexture_extension.c"

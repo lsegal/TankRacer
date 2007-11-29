@@ -10,7 +10,7 @@
 //////////////////////////////////////////////////////////////////////////////////////////	
 #include <windows.h>
 #include <GL\gl.h>
-#include "../glext.h"
+#include "../opengl/glext.h"
 #include "EXT_draw_range_elements_extension.h"
 
 BOOL EXT_draw_range_elements_supported = FALSE;

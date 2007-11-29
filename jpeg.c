@@ -1,7 +1,7 @@
 #include "common.h"
 
 #ifdef WIN32
-#	include "jpeglib.h"
+#	include "libjpeg/jpeglib.h"
 #else
 #	include	<jpeglib.h>
 #endif
