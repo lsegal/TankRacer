@@ -8,6 +8,7 @@ static float windowWidth;
 static float windowHeight;
 static float frame = 0;
 static bspfile *bsp;
+static char mapName[128];
 typedef void (*TankInitProc)(Tank *, ...);
 
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
@@ -23,45 +24,52 @@ static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 
 static void Game_Read_KeyConfig() {
 	int pnum, *keyPtr, keyVal;
-	char line[256], actionName[20], keyName[20];
+	char line[256], actionName[20], keyName[20], key[20], val[64];
 	FILE *file = fopen("config.txt", "r");
 
 	while (!feof(file)) {
 		fgets(line, 256, file);
-		sscanf(line, "%d %s %s", &pnum, actionName, keyName);
+		if (sscanf(line, "%d %s %s", &pnum, actionName, keyName) > 0) {
+			/* This key value is for player `pnum` */
+			if (pnum >= 0 && pnum < numPlayers) {
+				/* Key names */
+				if (keyName[1] == 0) {
+					keyVal = keyName[0];
+				}
+				else if (!strcmp(keyName, "left")) {
+					keyVal = KEY_LEFT;
+				}
+				else if (!strcmp(keyName, "right")) {
+					keyVal = KEY_RIGHT;
+				}
+				else if (!strcmp(keyName, "up")) {
+					keyVal = KEY_UP;
+				}
+				else if (!strcmp(keyName, "down")) {
+					keyVal = KEY_DOWN;
+				}
 
-		/* Set keys */
-		if (pnum >= 0 && pnum < numPlayers) {
-			if (keyName[1] == 0) {
-				keyVal = keyName[0];
-			}
-			else if (!strcmp(keyName, "left")) {
-				keyVal = KEY_LEFT;
-			}
-			else if (!strcmp(keyName, "right")) {
-				keyVal = KEY_RIGHT;
-			}
-			else if (!strcmp(keyName, "up")) {
-				keyVal = KEY_UP;
-			}
-			else if (!strcmp(keyName, "down")) {
-				keyVal = KEY_DOWN;
-			}
+				/* Action names */
+				if (!strcmp(actionName, "left")) {
+					keyPtr = &playerList[pnum].leftKey;
+				}
+				else if (!strcmp(actionName, "right")) {
+					keyPtr = &playerList[pnum].rightKey;
+				}
+				else if (!strcmp(actionName, "forward")) {
+					keyPtr = &playerList[pnum].forwardKey;
+				}
+				else if (!strcmp(actionName, "back")) {
+					keyPtr = &playerList[pnum].backKey;
+				}
 
-			if (!strcmp(actionName, "left")) {
-				keyPtr = &playerList[pnum].leftKey;
+				*keyPtr = keyVal;
 			}
-			else if (!strcmp(actionName, "right")) {
-				keyPtr = &playerList[pnum].rightKey;
+		}
+		else if (sscanf(line, "%s %s", key, val) > 0) {
+			if (!strcmp(key, "map")) {
+				sprintf(mapName, "maps/%s.bsp", val);
 			}
-			else if (!strcmp(actionName, "forward")) {
-				keyPtr = &playerList[pnum].forwardKey;
-			}
-			else if (!strcmp(actionName, "back")) {
-				keyPtr = &playerList[pnum].backKey;
-			}
-
-			*keyPtr = keyVal;
 		}
 	}
 
@@ -76,17 +84,17 @@ void Game_Init() {
 	/* Load the keyboard */
 	Keyboard_Init();
 
+	/* Read configuration file */
+	Game_Read_KeyConfig();
+
 	/* Load the map */
-	bsp = bsp_load("maps/tankracer.bsp");
+	bsp = bsp_load(mapName);
 	if (!bsp) exit(1);
 
 	/* Setup player info */
 	for (i = 0; i < numPlayers; i++) {
 		Player_Init(i, Cowtank_Init);
 	}
-
-	/* Read configuration file */
-	Game_Read_KeyConfig();
 }
 
 void Game_Resize(int w, int h) {
