@@ -47,7 +47,7 @@ void Keyboard_Init()
 	glutKeyboardFunc(keyboard_down);
 	glutKeyboardUpFunc(keyboard_up);
 	glutSpecialFunc(keyboard_special_down);
-	glutSpecialFunc(keyboard_special_up);
+	glutSpecialUpFunc(keyboard_special_up);
 }
 
 void keyboard_down(unsigned char key, int x, int y) 
