@@ -52,19 +52,25 @@ void Game_Resize(int w, int h) {
 }
 
 static void Game_HandleKeys() {
+	float z[] = {0,0,0}, tmp[3];
+
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 	if (Keyboard_GetState('w', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[0] += 0.2;
-		playerList[0].tank.obj.speed += 0.2;
+		vec3f_set(playerList[0].tank.obj.direction, tmp);
+		vec3f_scale(tmp, 0.2, tmp);
+		vec3f_add(playerList[0].tank.obj.position, 
+				tmp, playerList[0].tank.obj.position);
 	}
 	if (Keyboard_GetState('s', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[0] -= 0.2;
+		vec3f_sub(playerList[0].tank.obj.direction, 
+				playerList[0].tank.obj.position, 
+				playerList[0].tank.obj.position);
 	}
 	if (Keyboard_GetState('a', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[2] -= 0.2;
+		vec3f_rotp(playerList[0].tank.obj.direction, z, playerList[0].tank.obj.upAngles, 5, playerList[0].tank.obj.direction);
 	}
 	if (Keyboard_GetState('d', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[2] += 0.2;
+		vec3f_rotp(playerList[0].tank.obj.direction, z, playerList[0].tank.obj.upAngles, -5, playerList[0].tank.obj.direction);
 	}
 	if (Keyboard_GetState('g', TRUE, FALSE)) {
 		playerList[0].tank.obj.position[1] += 0.2;
@@ -79,17 +85,13 @@ void Game_Run() {
 	frame++;
 }
 
-static void Game_Set_Camera(int playerNum) {
+static void Game_SetCamera(int playerNum) {
 	float pos[3], dir[3], temp[3];
 	Object *obj = &playerList[playerNum].tank.obj;
 
 	vec3f_set(obj->direction, dir);
 	vec3f_scale(dir, -2, dir);
-	dir[2] = 0;
-	dir[1] = 1.3;/*
-	dir[0] = 2 * cosd(2 * frame);
-	dir[2] = 2 * sind(2 * frame);
-	dir[1] = 1;*/
+	dir[1] = 1.3;
 
 	vec3f_set(obj->position, pos);
 	vec3f_add(pos, dir, pos);
@@ -97,6 +99,8 @@ static void Game_Set_Camera(int playerNum) {
 	vec3f_scale(temp, 5, temp);
 	vec3f_add(obj->position, temp, temp);
 	vec3f_sub(pos, temp, dir);
+
+	sprintf(playerList[playerNum].centerText, "%.2f %.2f %.2f", obj->direction[0], obj->direction[1], obj->direction[2]);
 
 	Camera_SetPosition(&playerList[playerNum].camera, pos, dir);
 }
@@ -114,7 +118,7 @@ static void Game_Render_Scene(int playerNum) {
 	glColor3d(0.8, 1, 0.7);
 
 	/* Position the camera behind tank (always) */
-	Game_Set_Camera(playerNum);
+	Game_SetCamera(playerNum);
 
 	/* Render the scene from the camera */
 	Camera_Render(&playerList[playerNum].camera);
@@ -160,7 +164,7 @@ static void Game_Render_Scene(int playerNum) {
 			glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
 		}
 
-		glRotatef(180, 0, 1, 0);
+		glRotatef(-RAD2DEG(atan2(tank->obj.direction[2], tank->obj.direction[0])) - 180, 0, 1, 0);
 		//glRotated(frame, 1, 0, 0);
 		glScalef(2, 2, 2);
 		tank->obj.drawFunc(&tank->obj, tank->obj.funcData);

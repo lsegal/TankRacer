@@ -56,6 +56,7 @@ extern float *vec3f_add(float[3], float[3], float[3]);
 extern float *vec3f_sub(float[3], float[3], float[3]);
 extern float  vec3f_dist(float[3], float[3]);
 extern float  vec3f_classify(float[3], float[3], float);
+extern float *vec3f_rotp(float[3], float[3], float[3], float, float[3]);
 
 extern float *mat4f_mult(float[16], float[16], float[16]);
 

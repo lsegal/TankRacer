@@ -50,6 +50,42 @@ float vec3f_classify(float point[3], float plane[3], float intercept) {
 	else				 return  0;
 }
 
+/* Rotates point `p1` by `angle` degrees around line `line` passing through point `p2` */
+float *vec3f_rotp(float p1[3], float p2[3], float line[3], float angle, float out[3]) {
+	float x, y, z, a, b, c, u, v, w, k, ca, sa, mag;
+	mag = vec3f_mag(line);
+	ca = cosd(angle); sa = sind(angle);
+	x = p1[0]; y = p1[1]; z = p1[2];
+	a = p2[0]; b = p2[1]; c = p2[2];
+	u = line[0] / mag; v = line[1] / mag; w = line[2] / mag;
+
+	/* 
+	 * Here comes the fun 
+	 * Ref: http://www.mines.edu/~gmurray/ArbitraryAxisRotation/ArbitraryAxisRotation.html 
+	 *
+	 * This could be heavily optimized, but there isn't enough time in the day...
+	 */
+	k = v*v + w*w;
+	out[0] = a*k + u * (-b*v - c*w + u*x + v*y + w*z) + 
+		((x-a)*k + u * (b*v + c*w - v*y - w*z)) * ca + 
+		(b*w - c*v - w*y + v*z) * sa;
+
+	k = u*u + w*w;
+	out[1] = b*k + v * (-a*u - c*w + u*x + v*y + w*z) + 
+		((y-b)*k + v * (a*u + c*w - u*v + w*z)) * ca +
+		(-a*w + c*u + w*x - u*z) * sa;
+
+	k = u*u + v*v;
+	out[2] = c*k + w * (-a*u - b*v + u*x + v*y + w*z) + 
+		((z-c)*k + w * (a*u + b*v - u*v - v*y)) * ca +
+		(a*v - b*u - v*x + w*y) * sa;
+
+	mag = u*u + v*v + w*w;
+	out[0] /= mag; out[1] /= mag; out[2] /= mag;
+
+	return out;
+}
+
 /* Multiplies a 4x4 matrix by another */
 float *mat4f_mult(float m1[16], float m2[16], float out[16]) {
     int i, j, k;
