@@ -13,6 +13,22 @@ float *vec3f_norm(float vec[3]) {
 	return vec;
 }
 
+/* Cross product of two vectors */
+float *vec3f_cross(float v1[3], float v2[3], float out[3]) {
+	out[0] = v1[1] * v2[2] - v2[1] * v1[2];
+	out[1] = v1[0] * v2[2] - v2[0] * v1[2];
+	out[2] = v1[0] * v2[1] - v2[0] * v1[1];
+	return out;
+}
+
+/* Returns the (normalized) `normal` given three points lying in a plane (`p1`, `p2`, `p3`) */
+float *vec3f_normalp(float p1[3], float p2[3], float p3[3], float normal[3]) {
+	float l1[3], l2[3];
+	vec3f_sub(p3, p1, l1);
+	vec3f_sub(p2, p1, l2);
+	return vec3f_norm(vec3f_cross(p1, p2, normal));
+}
+
 /* Scales a vector by `scale` into `out` */
 float *vec3f_scale(float vec[3], float scale, float out[3]) {
 	memcpy(out, vec, sizeof(float[3]));
