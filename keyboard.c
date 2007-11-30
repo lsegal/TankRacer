@@ -1,7 +1,7 @@
 #include "common.h"
 #include "keyboard.h"
 
-static int key_states[256];
+static int key_states[300];
 
 static void keyboard_down(unsigned char key, int x, int y);
 static void keyboard_up(unsigned char key, int x, int y);
