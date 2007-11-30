@@ -57,7 +57,8 @@ void keyboard_down(unsigned char key, int x, int y)
 
 static void keyboard_up(unsigned char key, int x, int y)
 {
-	key_states[key] = 0;
+	key_states[toupper(key)] = 0;
+	key_states[tolower(key)] = 0;
 }
 
 static int keyboard_glut_to_key(int key) {
