@@ -329,6 +329,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\config.txt"
+			>
+		</File>
+		<File
 			RelativePath=".\game.c"
 			>
 		</File>

@@ -451,7 +451,7 @@ plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1,
 
 				d1 = vec3f_classify(p1, cplane->normal, cplane->dist);
 				d2 = vec3f_classify(p2, cplane->normal, cplane->dist);
-				if (!d1 || !d2 || d1 != d2) {
+				if (!d1 || !d2 || (d1 != d2 && d1 >= 0)) {
 					printf("Collision with %s %s\n", bsp->data.textures[cbrush->texture].name,
 						(count == 2 ? "(through two leaves)" : ""));
 					return cplane;

@@ -61,9 +61,9 @@ float vec3f_dist(float p1[3], float p2[3]) {
 /* Returns -1 if a point is behind a plane, 0 if it lies in the plane and 1 if it's in front */
 float vec3f_classify(float point[3], float plane[3], float intercept) {
 	float dist = vec3f_dot(point, plane) - intercept;
-	if (dist < -EPSILON) return -1;
-	if (dist >  EPSILON) return  1;
-	else				 return  0;
+	if (dist < -EPSILON) return -1; /* Behind   */
+	if (dist >  EPSILON) return  1; /* In front */
+	else				 return  0; /* On plane */
 }
 
 /* Rotates point `p1` by `angle` degrees around line `line` passing through point `p2` */

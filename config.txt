@@ -1,0 +1,8 @@
+0 left		a
+0 right		d
+0 forward	w
+0 back		s
+1 left		left
+1 right		right
+1 forward	up
+1 back		down

@@ -10,7 +10,7 @@ static float frame = 0;
 static bspfile *bsp;
 typedef void (*TankInitProc)(Tank *, ...);
 
-void Player_Init(int playerNum, TankInitProc tankInitProc) {
+static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	Camera_Init(&playerList[playerNum].camera, bsp);	/* Initialize the camera */
 	tankInitProc(&playerList[playerNum].tank);			/* Initialize the tank */
 
@@ -19,6 +19,53 @@ void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	playerList[playerNum].tank.obj.position[2] = 6.5 + 4 * playerNum;
 
 	playerList[playerNum].tank.obj.direction[0] = 1; /* Point in the positive X */
+}
+
+static void Game_Read_KeyConfig() {
+	int pnum, *keyPtr, keyVal;
+	char line[256], actionName[20], keyName[20];
+	FILE *file = fopen("config.txt", "r");
+
+	while (!feof(file)) {
+		fgets(line, 256, file);
+		sscanf(line, "%d %s %s", &pnum, actionName, keyName);
+
+		/* Set keys */
+		if (pnum >= 0 && pnum < numPlayers) {
+			if (keyName[1] == 0) {
+				keyVal = keyName[0];
+			}
+			else if (!strcmp(keyName, "left")) {
+				keyVal = KEY_LEFT;
+			}
+			else if (!strcmp(keyName, "right")) {
+				keyVal = KEY_RIGHT;
+			}
+			else if (!strcmp(keyName, "up")) {
+				keyVal = KEY_UP;
+			}
+			else if (!strcmp(keyName, "down")) {
+				keyVal = KEY_DOWN;
+			}
+
+			if (!strcmp(actionName, "left")) {
+				keyPtr = &playerList[pnum].leftKey;
+			}
+			else if (!strcmp(actionName, "right")) {
+				keyPtr = &playerList[pnum].rightKey;
+			}
+			else if (!strcmp(actionName, "forward")) {
+				keyPtr = &playerList[pnum].forwardKey;
+			}
+			else if (!strcmp(actionName, "back")) {
+				keyPtr = &playerList[pnum].backKey;
+			}
+
+			*keyPtr = keyVal;
+		}
+	}
+
+	fclose(file);
 }
 
 void Game_Init() {
@@ -37,6 +84,9 @@ void Game_Init() {
 	for (i = 0; i < numPlayers; i++) {
 		Player_Init(i, Cowtank_Init);
 	}
+
+	/* Read configuration file */
+	Game_Read_KeyConfig();
 }
 
 void Game_Resize(int w, int h) {
@@ -52,36 +102,57 @@ void Game_Resize(int w, int h) {
 }
 
 static void Game_HandleKeys() {
+	int i;
 	float z[] = {0,0,0}, tmp[3];
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
-	if (Keyboard_GetState('w', TRUE, FALSE)) {
-		vec3f_set(playerList[0].tank.obj.direction, tmp);
-		vec3f_scale(tmp, 0.2, tmp);
-		vec3f_add(playerList[0].tank.obj.position, 
-				tmp, playerList[0].tank.obj.position);
-	}
-	if (Keyboard_GetState('s', TRUE, FALSE)) {
-		vec3f_sub(playerList[0].tank.obj.direction, 
-				playerList[0].tank.obj.position, 
-				playerList[0].tank.obj.position);
-	}
-	if (Keyboard_GetState('a', TRUE, FALSE)) {
-		vec3f_rotp(playerList[0].tank.obj.direction, z, playerList[0].tank.obj.upAngles, 5, playerList[0].tank.obj.direction);
-	}
-	if (Keyboard_GetState('d', TRUE, FALSE)) {
-		vec3f_rotp(playerList[0].tank.obj.direction, z, playerList[0].tank.obj.upAngles, -5, playerList[0].tank.obj.direction);
-	}
-	if (Keyboard_GetState('g', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[1] += 0.2;
-	}
-	if (Keyboard_GetState('b', TRUE, FALSE)) {
-		playerList[0].tank.obj.position[1] -= 0.2;
+
+	for (i = 0; i < numPlayers; i++) {
+		if (Keyboard_GetState(playerList[i].forwardKey, TRUE, FALSE)) {
+			vec3f_set(playerList[i].tank.obj.direction, tmp);
+			vec3f_scale(tmp, 0.2, tmp);
+			vec3f_add(playerList[i].tank.obj.position, 
+					tmp, playerList[i].tank.obj.position);
+		}
+		if (Keyboard_GetState(playerList[i].backKey, TRUE, FALSE)) {
+			vec3f_sub(playerList[i].tank.obj.direction, 
+					playerList[i].tank.obj.position, 
+					playerList[i].tank.obj.position);
+		}
+		if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) {
+			vec3f_rotp(playerList[i].tank.obj.direction, z, playerList[i].tank.obj.upAngles, 5, playerList[i].tank.obj.direction);
+		}
+		if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) {
+			vec3f_rotp(playerList[i].tank.obj.direction, z, playerList[0].tank.obj.upAngles, -5, playerList[i].tank.obj.direction);
+		}
+		if (Keyboard_GetState('g', TRUE, FALSE)) {
+			playerList[i].tank.obj.position[1] += 0.2;
+		}
+		if (Keyboard_GetState('b', TRUE, FALSE)) {
+			playerList[i].tank.obj.position[1] -= 0.2;
+		}
 	}
 }
 
 void Game_Run() {
+	int i;
+	float gravity[] = {0, -0.37338, 0}, tmp[3];
+	plane *cplane;
+
 	Game_HandleKeys();
+
+	for (i = 0; i < numPlayers; i++) {
+		vec3f_add(gravity, playerList[i].tank.obj.force, playerList[i].tank.obj.force);
+
+		vec3f_add(playerList[i].tank.obj.position, playerList[i].tank.obj.force, tmp);
+		if (cplane = bsp_simple_collision(bsp, playerList[i].tank.obj.position, tmp, NULL, NULL)) {
+		//	vec3f_set(cplane->normal, playerList[i].tank.obj.upAngles);
+		}
+		else {
+		//	vec3f_add(playerList[i].tank.obj.force, playerList[i].tank.obj.position, playerList[i].tank.obj.position);
+		}
+	}
+
 	frame++;
 }
 
@@ -164,7 +235,10 @@ static void Game_Render_Scene(int playerNum) {
 			glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
 		}
 
-		glRotatef(-RAD2DEG(atan2(tank->obj.direction[2], tank->obj.direction[0])) - 180, 0, 1, 0);
+		glRotatef(RAD2DEG(atan2(tank->obj.upAngles[X], tank->obj.upAngles[Y])), 0, 0, 1); /* PITCH */
+		glRotatef(RAD2DEG(atan2(tank->obj.upAngles[2], tank->obj.upAngles[1])), 1, 0, 0); /* ROLL */
+		glRotatef(-RAD2DEG(atan2(tank->obj.direction[2], tank->obj.direction[0])) - 180, 0, 1, 0); /* YAW */
+
 		//glRotated(frame, 1, 0, 0);
 		glScalef(2, 2, 2);
 		tank->obj.drawFunc(&tank->obj, tank->obj.funcData);

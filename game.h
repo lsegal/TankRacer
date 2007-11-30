@@ -3,8 +3,14 @@
 #include "keyboard.h"
 
 typedef struct Player {
+	int		playerNum;
 	Camera	camera;
 	Tank	tank;
+
+	int		forwardKey;
+	int		backKey;
+	int		leftKey;
+	int		rightKey;
 
 	char	bottomText[128];
 	char	centerText[128];
