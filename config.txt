@@ -1,8 +1,14 @@
+; General game settings
 map tankracer
+gravity 0.01
+
+; Player 1 controls
 0 left		a
 0 right		d
 0 forward	w
 0 back		s
+
+; Player 2 controls 
 1 left		left
 1 right		right
 1 forward	up
