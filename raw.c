@@ -7,10 +7,7 @@ GLuint load_texture_raw(const char *filename, int width, int height, int repeat)
     FILE *fp;
 
     fp = fopen(filename, "rb");
-	if (!fp) {
-		fprintf(stderr, "Could not load texture '%s'\n", filename);
-		return -1;
-	}
+	if (!fp) return -1;
 
 	/* Load the buffer */
     buf = malloc(width * height * 3);

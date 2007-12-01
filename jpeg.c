@@ -16,10 +16,7 @@ GLuint load_texture_jpeg(char *filename) {
 	struct jpeg_decompress_struct cinfo;
 	
 	file = fopen(filename, "rb");	
-	if (!file) {
-		fprintf(stderr, "Could not load texture '%s'\n", filename);
-		return -1;
-	}
+	if (!file) return -1;
 
 	/* Setup jpeg */
 	cinfo.err = jpeg_std_error(&err);

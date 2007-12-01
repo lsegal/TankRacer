@@ -6,10 +6,7 @@ GLuint load_texture_tga(char *filename) {
 	int format;
 
 	tImageTGA *img = LoadTGA(filename);
-	if (img == NULL) {
-		fprintf(stderr, "Could not load texture '%s'\n", filename);
-		return -1;
-	}
+	if (img == NULL) return -1;
 
 	if (img->channels == 3) {
 		format = GL_RGB;
