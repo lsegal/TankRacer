@@ -341,8 +341,8 @@ static void Game_Render_Scene(int playerNum) {
 	/* Position the camera behind tank (always) */
 	Game_SetCamera(playerNum);
 
-	//glColor3d(0.6*sin(frame/1000), 0.8*sin(frame/1000), 0.5*sin(frame/1000));
-	glColor3d(0.6, 0.8, 0.5);
+	glColor3d(0.6*sin(frame/1000), 0.8*sin(frame/1000), 0.5*sin(frame/1000));
+	//glColor3d(0.6, 0.8, 0.5);
 	/* Render the scene from the camera */
 	Camera_Render(&playerList[playerNum].camera);
 
