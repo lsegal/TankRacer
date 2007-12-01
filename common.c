@@ -84,17 +84,17 @@ float *vec3f_rotp(float p1[3], float p2[3], float line[3], float angle, float ou
 	k = v*v + w*w;
 	out[0] = a*k + u * (-b*v - c*w + u*x + v*y + w*z) + 
 		((x-a)*k + u * (b*v + c*w - v*y - w*z)) * ca + 
-		(b*w - c*v - w*y + v*z) * sa;
+		mag * (b*w - c*v - w*y + v*z) * sa;
 
 	k = u*u + w*w;
 	out[1] = b*k + v * (-a*u - c*w + u*x + v*y + w*z) + 
-		((y-b)*k + v * (a*u + c*w - u*v + w*z)) * ca +
-		(-a*w + c*u + w*x - u*z) * sa;
+		((y-b)*k + v * (a*u + c*w - u*x - w*z)) * ca +
+		mag * (-a*w + c*u + w*x - u*z) * sa;
 
 	k = u*u + v*v;
 	out[2] = c*k + w * (-a*u - b*v + u*x + v*y + w*z) + 
-		((z-c)*k + w * (a*u + b*v - u*v - v*y)) * ca +
-		(a*v - b*u - v*x + w*y) * sa;
+		((z-c)*k + w * (a*u + b*v - u*x - v*y)) * ca +
+		mag * (a*v - b*u - v*x + u*y) * sa;
 
 	mag = u*u + v*v + w*w;
 	out[0] /= mag; out[1] /= mag; out[2] /= mag;
