@@ -14,6 +14,9 @@ typedef struct Player {
 
 	char	bottomText[128];
 	char	centerText[128];
+
+	float   lastDir[10][3];
+	float   numLast;
 } Player;
 
 extern void Game_Init();

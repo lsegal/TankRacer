@@ -12,6 +12,11 @@ static char mapName[128];
 static float gravity = 0.37338;
 typedef void (*TankInitProc)(Tank *, ...);
 
+static GLuint skyTexture;
+static GLuint cloudTexture;
+static GLuint fogTexture;
+static GLUquadricObj *quad;
+
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	Camera_Init(&playerList[playerNum].camera, bsp);	/* Initialize the camera */
 	tankInitProc(&playerList[playerNum].tank);			/* Initialize the tank */
@@ -21,6 +26,9 @@ static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	playerList[playerNum].tank.obj.position[2] = 6.5 + 4 * playerNum;
 
 	playerList[playerNum].tank.obj.direction[0] = 1; /* Point in the positive X */
+
+	playerList[playerNum].numLast = 10;
+	memset(playerList[playerNum].lastDir, 0, sizeof(float[3]) * playerList[playerNum].numLast);
 }
 
 static void Game_Read_Config() {
@@ -93,6 +101,12 @@ void Game_Init() {
 	/* Read configuration file */
 	Game_Read_Config();
 
+	/* Load sky texture */
+	skyTexture = load_texture_jpeg("textures/sky1.jpg");
+	cloudTexture = load_texture_jpeg("textures/sky2.jpg");
+	fogTexture = load_texture_jpeg("textures/clouds.jpg");
+	quad = gluNewQuadric();
+
 	/* Load the map */
 	bsp = bsp_load(mapName);
 	if (!bsp) {
@@ -119,52 +133,60 @@ void Game_Resize(int w, int h) {
 }
 
 static void Game_HandleKeys() {
-	int i, driving = FALSE;
+	int i, driving = 0;
+	Object *obj;
 	float z[] = {0,0,0}, tmp[3];
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 
 	for (i = 0; i < numPlayers; i++) {
-		if (Keyboard_GetState(playerList[i].forwardKey, TRUE, FALSE)) {
-			driving = TRUE;
-		}
-		if (Keyboard_GetState(playerList[i].backKey, TRUE, FALSE)) {
-			vec3f_sub(playerList[i].tank.obj.direction, 
-					playerList[i].tank.obj.position, 
-					playerList[i].tank.obj.position);
-		}
-		if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
-			vec3f_rotp(playerList[i].tank.obj.direction, z, playerList[i].tank.obj.upAngles, 5, playerList[i].tank.obj.direction);
-		}
-		if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
-			vec3f_rotp(playerList[i].tank.obj.direction, z, playerList[0].tank.obj.upAngles, -5, playerList[i].tank.obj.direction);
-		}
-		if (Keyboard_GetState('g', TRUE, FALSE)) {
-			playerList[i].tank.obj.position[1] += 0.2;
-		}
-		if (Keyboard_GetState('b', TRUE, FALSE)) {
-			playerList[i].tank.obj.position[1] -= 0.2;
-		}
+		obj = &playerList[i].tank.obj;
 
-		if (driving || fabs(playerList[i].tank.obj.speed) > EPSILON) {
-			vec3f_set(playerList[i].tank.obj.direction, tmp);
-			vec3f_scale(tmp, 0.2, tmp);
-			vec3f_add(playerList[i].tank.obj.force, 
-					tmp, playerList[i].tank.obj.force);
+		driving = 0;
+
+		if (obj->onGround) {
+			if (Keyboard_GetState(playerList[i].forwardKey, TRUE, FALSE)) {
+				driving = 1;
+			}
+			if (Keyboard_GetState(playerList[i].backKey, TRUE, FALSE)) {
+				driving = -1;
+			}
+			if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
+				if (obj->speed != 0) {
+					vec3f_rotp(obj->direction, z, obj->upAngles, 
+						playerList[i].tank.turnAbility * 1/ceil(obj->speed*10), obj->direction);
+				}
+			}
+			if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
+				if (obj->speed != 0) {
+					vec3f_rotp(obj->direction, z, obj->upAngles, 
+						-playerList[i].tank.turnAbility * 1/ceil(obj->speed*10), obj->direction);
+				}
+			}
+			if (Keyboard_GetState('g', TRUE, FALSE)) {
+				obj->force[1] += 0.2;
+			}
+			if (Keyboard_GetState('b', TRUE, FALSE)) {
+				obj->force[1] -= 0.2;
+			}
+
+			if (driving || fabs(obj->speed) > EPSILON) {
+				vec3f_set(obj->direction, tmp);
+				vec3f_scale(tmp, 0.2 * driving, tmp);
+				vec3f_add(obj->force, tmp, obj->force);
+			}
 		}
 	}
 }
 
 static void Game_GenerateHitbox(Object *obj, float hitbox[8][3]) {
 	int i, n = -1;
-	float w = obj->width / 2, h = obj->height / 2, l = obj->length / 2;
+	float w = obj->width / 2, h = obj->height, l = obj->length / 2;
 
 	for (i = 0; i < 8; i++) { 
 		vec3f_set(obj->position, hitbox[i]);
 
-		if (i < 4)	hitbox[i][1] -= h;
-		else		hitbox[i][1] += h;
-
+		if (i >= 4)	hitbox[i][1] += h;
 		if ((i & 1) == 0) n = -n;
 		hitbox[i][0] += n * w;
 		hitbox[i][2] += ((i & 1) == 0 ? 1 : -1) * l;
@@ -173,90 +195,137 @@ static void Game_GenerateHitbox(Object *obj, float hitbox[8][3]) {
 
 void Game_Run() {
 	int i, x;
-	float grav[] = {0, -gravity, 0}, nforce[3], tmp[3], nmag, fric = 0.1;
-	float fin[] = {0, 0, 0}, dfin[3], up[] = {0, 0, 0}, hitbox[8][3], ffric[3];
+	float dir[3], hitbox[8][3], ftot[3], tmp[3], up[] = {0, 0, 0};
+	float hitboxadjust[] = {0, EPSILON, 0};
+	float grav[] = { 0, -gravity, 0 };
 	Object *obj;
 	face *cface;
+	float mag;
 
 	Game_HandleKeys();
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
 
-		/* Add forces to get total force acting on object */
-		vec3f_set(grav, fin);
-		vec3f_add(obj->force, fin, fin);
+		vec3f_set(obj->force, ftot);
+		vec3f_add(ftot, grav, ftot);
 
-		/* Get delta force */
-		vec3f_set(fin, dfin);
-		vec3f_norm(dfin);
-		vec3f_scale(dfin, EPSILON, dfin);
+		vec3f_set(ftot, dir);
+		vec3f_norm(dir);
+		vec3f_scale(dir, 2 * EPSILON, dir);
 
-		/* Find normal forces acting on each point of the hitbox */
+		/* Get direction vector */
 		Game_GenerateHitbox(obj, hitbox);
+		obj->onGround = 0;
 		for (x = 0; x < 8; x++) {
-			vec3f_add(hitbox[x], dfin, tmp);
-			if (cface = bsp_face_collision(bsp, hitbox[x], tmp)) {
-				printf("Collision with '%s'\n", bsp->data.textures[cface->texture].name);
+			vec3f_add(hitboxadjust, hitbox[x], hitbox[x]);
+			if (cface = bsp_face_collision(bsp, hitbox[x], dir)) {
+				obj->onGround = 1;
 
-				fric += 0.1;
-
-				if (x < 4) { /* Normal forces generated by bottom half of hitbox help create upangles */
-					vec3f_add(up, cface->normal, up);
+				if (x < 4) {
+					if (acos(vec3f_dot(cface->normal, obj->upAngles)) < PI/8) {
+						vec3f_add(cface->normal, up, up);
+					}
 				}
 
-				/* Calculate the normal force */
-				nmag = vec3f_dot(cface->normal, fin);
-				vec3f_scale(cface->normal, nmag, nforce);
+				printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
+				vec3f_scale(cface->normal, vec3f_dot(cface->normal, ftot) * obj->mass, tmp);
+				vec3f_sub(tmp, ftot, ftot);
 
-				/* Add normal force to force vector */
-				vec3f_sub(nforce, fin, fin);
+				mag = vec3f_mag(ftot) * vec3f_dot(obj->direction, ftot);
+				vec3f_scale(obj->direction, -mag, tmp);
 			}
 		}
+		vec3f_norm(up);
+		vec3f_set(up, obj->upAngles);
 
-		/* Set upangles */
-		if (fabs(vec3f_mag(up)) > EPSILON) {
-			vec3f_norm(up);
-			vec3f_set(up, obj->upAngles);
+		/* Apply friction to left and right directions (relative to tank) */
+		vec3f_cross(obj->direction, obj->upAngles, tmp);
+		vec3f_norm(tmp);
+		vec3f_scale(tmp, vec3f_dot(tmp, ftot), tmp);
+		vec3f_sub(tmp, ftot, ftot);
+
+		/* Apply friction in driving direction */
+		vec3f_set(obj->direction, tmp);
+		vec3f_norm(tmp);
+		vec3f_scale(tmp, vec3f_dot(tmp, ftot) * vec3f_mag(ftot), tmp);
+		vec3f_sub(tmp, ftot, ftot);
+		
+		if (fabs(vec3f_mag(ftot)) < EPSILON) {
+			vec3f_clear(ftot);
 		}
 
-		/* Set force and add it to position */
-		vec3f_set(fin, obj->force);
-		sprintf(playerList[i].centerText, "%.2f %.2f %.2f", obj->velocity[0], obj->velocity[1], obj->velocity[2]);
-		obj->speed = vec3f_mag(fin);
+		vec3f_set(ftot, obj->force);
+		obj->speed = vec3f_mag(ftot);
 
-		/* Add friction */
-		if (fric > 1.0f) fric = 1.0f;
-		vec3f_set(fin, ffric);
-		vec3f_norm(ffric);
-		vec3f_scale(ffric, fric * obj->speed, ffric);
-		vec3f_sub(ffric, fin, fin);
-		obj->speed = vec3f_mag(fin);
-
-		vec3f_add(fin, obj->velocity, obj->velocity);
-		vec3f_add(obj->velocity, obj->position, obj->position);
-		vec3f_clear(obj->force);
+		vec3f_add(obj->force, obj->position, obj->position);
+		//vec3f_clear(obj->force);
 	}
+	printf("Done. %.0f\n", frame);
 
 	frame++;
 }
 
 static void Game_SetCamera(int playerNum) {
+	int i;
 	float pos[3], dir[3], temp[3];
 	Object *obj = &playerList[playerNum].tank.obj;
+	float *direction = obj->direction;
 
-	vec3f_set(obj->direction, dir);
-	vec3f_scale(dir, -2, dir);
+	for (i = playerList[playerNum].numLast-1; i >= 0; i--) {
+		if (vec3f_mag(playerList[playerNum].lastDir[i]) != 0) {
+			direction = (float *)&playerList[playerNum].lastDir[i];
+			break;
+		}
+	}
+	vec3f_set(direction, dir);
+	vec3f_scale(dir, -3, dir);
 	dir[1] = 1.3;
 
 	vec3f_set(obj->position, pos);
 	vec3f_add(pos, dir, pos);
-	vec3f_set(obj->direction, temp);
+	vec3f_set(direction, temp);
 	vec3f_scale(temp, 5, temp);
 	vec3f_add(obj->position, temp, temp);
 	vec3f_sub(pos, temp, dir);
 
 	Camera_SetPosition(&playerList[playerNum].camera, pos, dir);
+
+	for (i = playerList[playerNum].numLast-1; i >= 0; i--) {
+		vec3f_set(playerList[playerNum].lastDir[i-1], playerList[playerNum].lastDir[i]);
+	}
+	vec3f_set(obj->direction, playerList[playerNum].lastDir[0]);
+}
+
+static void Game_Draw_Sky() {
+	float amb = sin(frame/1000);
+
+	gluQuadricOrientation(quad, GLU_INSIDE); 
+	gluQuadricTexture(quad, GL_TRUE);
+
+	/* Draw sky sphere */
+	glDisable(GL_BLEND);
+	if (amb < 0.0f) amb = 0.0f;
+	if (amb > 0.5f) amb = 0.5f;
+	glColor3f(0.1 + amb, 0.1 + amb, 0.1 + amb);
+	glBindTexture(GL_TEXTURE_2D, skyTexture);
+	glPushMatrix();
+	glRotatef(90, 1, 0, 0);
+	glRotatef(-frame/10, 1, 0, 0);
+	gluSphere(quad, 200, 64, 64);
+	glPopMatrix();
+
+	/* Draw cloud sphere */
+	glColor4f(0.3 + amb, 0.3 + amb / 2, 0.3 + amb, 0.3);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_COLOR, GL_DST_COLOR);
+	glBindTexture(GL_TEXTURE_2D, cloudTexture);
+	glPushMatrix();
+	glRotatef(90, 1, 0, 0);
+	glRotatef(frame/10, 1, -1, 1);
+	gluSphere(quad, 180, 64, 64);
+	glPopMatrix();
+	glDisable(GL_BLEND);
 }
 
 static void Game_Render_Scene(int playerNum) {
@@ -269,13 +338,16 @@ static void Game_Render_Scene(int playerNum) {
 	glViewport(0, (numPlayers - playerNum - 1) * (windowHeight/(float)numPlayers), 
 		windowWidth, (windowHeight/(float)numPlayers));
 	
-	glColor3d(0.8, 1, 0.7);
-
 	/* Position the camera behind tank (always) */
 	Game_SetCamera(playerNum);
 
+	//glColor3d(0.6*sin(frame/1000), 0.8*sin(frame/1000), 0.5*sin(frame/1000));
+	glColor3d(0.6, 0.8, 0.5);
 	/* Render the scene from the camera */
 	Camera_Render(&playerList[playerNum].camera);
+
+	/* Draw sky"box" (spheres) */
+	Game_Draw_Sky();
 
 	/* Draw all objects */
 	/* Replace this with WORLD_DRAW */ 
@@ -312,13 +384,13 @@ static void Game_Render_Scene(int playerNum) {
 			glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
 			glLightfv(GL_LIGHT0, GL_SPECULAR, diff);
 
-			amb[0] = (float)light->ambient[0] / 255.0;
-			amb[1] = (float)light->ambient[1] / 255.0;
-			amb[2] = (float)light->ambient[2] / 255.0;
+			amb[0] = (float)light->ambient[0] / 255.0 + 0.4;
+			amb[1] = (float)light->ambient[1] / 255.0 + 0.4;
+			amb[2] = (float)light->ambient[2] / 255.0 + 0.4;
 			glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
 		}
 
-		glRotatef(RAD2DEG(atan2(tank->obj.upAngles[X], tank->obj.upAngles[Y])), 0, 0, 1); /* PITCH */
+		glRotatef(-RAD2DEG(atan2(tank->obj.upAngles[X], tank->obj.upAngles[Y])), 0, 0, 1); /* PITCH */
 		glRotatef(RAD2DEG(atan2(tank->obj.upAngles[2], tank->obj.upAngles[1])), 1, 0, 0); /* ROLL */
 		glRotatef(-RAD2DEG(atan2(tank->obj.direction[2], tank->obj.direction[0])) - 180, 0, 1, 0); /* YAW */
 
