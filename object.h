@@ -18,6 +18,7 @@ typedef struct Object {
 	float length;			/* Object length */
 	float width;			/* Object width */
 	float height;			/* Object height */
+	int	  onGround;			/* Is object on the ground */
 
 	ObjectCallbackFunc *thinkFunc;		/* Think function called by world */
 	ObjectCallbackFunc *drawFunc;		/* Draw function called by world */

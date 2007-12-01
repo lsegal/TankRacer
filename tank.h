@@ -16,7 +16,7 @@ typedef struct Tank {
 	BOOL		rusted;
 
 	/* Add any other parameters here */
-
+	double		turnAbility;
 } Tank;
 
 /* Base class */
