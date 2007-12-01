@@ -15,6 +15,9 @@ typedef struct Object {
 	float maxSpeed;			/* Maximum speed magnitude */
 	float maxAccel;			/* Maximum accel magnitude */
 	float mass;				/* Mass for force calculation */
+	float length;			/* Object length */
+	float width;			/* Object width */
+	float height;			/* Object height */
 
 	ObjectCallbackFunc *thinkFunc;		/* Think function called by world */
 	ObjectCallbackFunc *drawFunc;		/* Draw function called by world */

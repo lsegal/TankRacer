@@ -49,6 +49,7 @@ const enum RotationNames { ROLL, YAW, PITCH } RotationNames;
 
 #define       vec3f_mag(vec) sqrt(vec3f_dot(vec, vec))
 #define		  vec3f_set(src, dst) vec3f_scale(src, 1.0f, dst)
+#define		  vec3f_clear(vec) memset(vec, 0, sizeof(float[3]))
 extern float  vec3f_dot(float[3], float[3]);
 extern float *vec3f_cross(float[3], float[3], float[3]);
 extern float *vec3f_normalp(float[3], float[3], float[3], float[3]);
