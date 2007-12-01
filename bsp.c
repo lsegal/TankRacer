@@ -105,6 +105,9 @@ void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
 
 		if (cface->texture < 0) continue; /* Don't draw unloaded textures */
 
+		if (bsp->data.textures[cface->texture].flags & 4)
+			continue; /* Don't draw skies either. We'll do this after */
+
 		/* This face is alpha transparent wherever there is black in the image */
 		if (bsp->data.textures[cface->texture].flags & 32) {
 			glDisable(GL_CULL_FACE);
@@ -475,7 +478,7 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	for (i = 0; i < cface->n_vertexes; i++) {
 		vec3f_sub(bsp->data.vertexes[cface->vertex+i].position, p, tmp);
 		vec3f_norm(tmp);
-		
+
 		if (i > 0) {
 			angle += acos(vec3f_dot(tmp, lasttmp));
 		}
@@ -486,38 +489,42 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	}
 	angle += acos(vec3f_dot(tmp, firsttmp));
 
-	return fabs(angle - 2*PI) < 0.1f;
+	return fabs(angle - 2*PI) < 4.0f;
 }
 
 /* Tests if a line segment passes through a face */
-face *bsp_face_collision(bspfile *bsp, float p1[3], float p2[3]) {
-	int i;
-	leaf *cleaf;
+face *bsp_face_collision(bspfile *bsp, float p1[3], float dir[3]) {
+	int i, n, num = 2;
+	leaf *leaves[2];
 	face *cface;
-	float dir[3], tmp[3], dist;
+	float tmp[3], p2[3], dist;
 
-	cleaf = bsp_find_leaf(bsp, p1);
+	/* Get leaves */
+	vec3f_add(p1, dir, p2);
+	leaves[0] = bsp_find_leaf(bsp, p1);
+	leaves[1] = bsp_find_leaf(bsp, p2);
+	if (leaves[0] == leaves[1]) num = 1;
 
 	/* Setup parametric equation to get point on plane */
-	vec3f_sub(p1, p2, dir);
 	vec3f_norm(dir);
 
-	for (i = 0; i < cleaf->n_leaffaces; i++) {
-		cface = &bsp->data.faces[bsp->data.leaffaces[cleaf->leafface+i].face];
+	for (n = 0; n < num; n++) { 
+		for (i = 0; i < leaves[n]->n_leaffaces; i++) {
+			cface = &bsp->data.faces[bsp->data.leaffaces[leaves[n]->leafface+i].face];
 
-		if (vec3f_dot(cface->normal, dir) > 0) continue; /* Face is back facing */
+			if (vec3f_dot(cface->normal, dir) >= 0) continue; /* Face is back facing */
 
-		dist = vec3f_dot(cface->normal, bsp->data.vertexes[cface->vertex].position);
-		dist -= vec3f_dot(p1, cface->normal);
-		vec3f_set(dir, tmp);
-		vec3f_scale(tmp, dist, tmp);
-		vec3f_add(p1, tmp, tmp);
+			vec3f_sub(bsp->data.vertexes[cface->vertex].position, p1, tmp);
+			dist = -vec3f_dot(cface->normal, tmp) / vec3f_dot(cface->normal, dir);
+			vec3f_scale(dir, dist, tmp);
+			vec3f_add(p1, tmp, tmp);
 
-		if (bsp_point_in_face(bsp, tmp, cface)) {
-#ifdef _PRINTDEBUG
-			printf("Collision with %s\n", bsp->data.textures[cface->texture].name);
-#endif
-			return cface;
+			if (bsp_point_in_face(bsp, tmp, cface)) {
+	#ifdef _PRINTDEBUG
+				printf("Collision with %s\n", bsp->data.textures[cface->texture].name);
+	#endif
+				return cface;
+			}
 		}
 	}
 	return NULL;
