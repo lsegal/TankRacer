@@ -207,6 +207,9 @@ void Game_Run() {
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
 
+		/* Let the object think */
+		obj->thinkFunc(obj, obj->funcData);
+
 		vec3f_set(obj->force, ftot);
 		vec3f_add(ftot, grav, ftot);
 
