@@ -168,6 +168,9 @@ static void bsp_load_textures(bspfile *bsp) {
 			tex = load_texture_tga(full_texname);
 		}
 
+		if (tex == -1) {
+			fprintf(stderr, "Could not load texture '%s'\n", bsp->data.textures[x].name);
+		}
 		bsp->texture_indexes[x] = tex;
 	}
 }
@@ -463,6 +466,63 @@ plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1,
 	return NULL;
 }
 
+/* Checks if a point lies in a concave face */
+static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
+	int i;
+	float tmp[3], lasttmp[3], firsttmp[3], angle = 0.0f;
+
+	/* Algorithm ref: http://www.gamespp.com/algorithms/CollisionDetectionTutorial.html */
+	for (i = 0; i < cface->n_vertexes; i++) {
+		vec3f_sub(bsp->data.vertexes[cface->vertex+i].position, p, tmp);
+		vec3f_norm(tmp);
+		
+		if (i > 0) {
+			angle += acos(vec3f_dot(tmp, lasttmp));
+		}
+		else {
+			vec3f_set(tmp, firsttmp);
+		}
+		vec3f_set(tmp, lasttmp);
+	}
+	angle += acos(vec3f_dot(tmp, firsttmp));
+
+	return fabs(angle - 2*PI) < 0.1f;
+}
+
+/* Tests if a line segment passes through a face */
+face *bsp_face_collision(bspfile *bsp, float p1[3], float p2[3]) {
+	int i;
+	leaf *cleaf;
+	face *cface;
+	float dir[3], tmp[3], dist;
+
+	cleaf = bsp_find_leaf(bsp, p1);
+
+	/* Setup parametric equation to get point on plane */
+	vec3f_sub(p1, p2, dir);
+	vec3f_norm(dir);
+
+	for (i = 0; i < cleaf->n_leaffaces; i++) {
+		cface = &bsp->data.faces[bsp->data.leaffaces[cleaf->leafface+i].face];
+
+		if (vec3f_dot(cface->normal, dir) > 0) continue; /* Face is back facing */
+
+		dist = vec3f_dot(cface->normal, bsp->data.vertexes[cface->vertex].position);
+		dist -= vec3f_dot(p1, cface->normal);
+		vec3f_set(dir, tmp);
+		vec3f_scale(tmp, dist, tmp);
+		vec3f_add(p1, tmp, tmp);
+
+		if (bsp_point_in_face(bsp, tmp, cface)) {
+#ifdef _PRINTDEBUG
+			printf("Collision with %s\n", bsp->data.textures[cface->texture].name);
+#endif
+			return cface;
+		}
+	}
+	return NULL;
+}
+
 lightvol *bsp_lightvol(bspfile *bsp, float pos[3]) {
 	/* Max grid values */
 	int nx = floor(bsp->data.models[0].maxs[0] / 64) - ceil(bsp->data.models[0].mins[0] / 64) + 1;
@@ -490,7 +550,6 @@ bspfile *bsp_load(char *filename) {
 	FILE *fp = fopen(filename, "rb");
 
 	if (!fp) {
-		fprintf(stderr, "Critical: could not load map '%s'\n", filename);
 		return NULL;
 	}
 
