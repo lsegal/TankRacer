@@ -17,6 +17,9 @@ typedef struct Player {
 
 	float   lastDir[10][3];
 	float   numLast;
+
+	int		lapNumber;
+	int		checkpoint;
 } Player;
 
 extern void Game_Init();

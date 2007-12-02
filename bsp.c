@@ -103,7 +103,7 @@ void bsp_draw_faces(bspfile *bsp, int *facelist, int numfaces) {
 	for (i = 0; i < numfaces; i++) {
 		cface = &bsp->data.faces[facelist[i]];
 
-		if (cface->texture < 0) continue; /* Don't draw unloaded textures */
+		if (bsp->texture_indexes[cface->texture] < 0) continue; /* Don't draw unloaded textures */
 
 		if (bsp->data.textures[cface->texture].flags & 4)
 			continue; /* Don't draw skies either. We'll do this after */
@@ -494,12 +494,13 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	return fabs(angle - 2*PI) < 0.15f;
 }
 
-/* Tests if a line segment passes through a face */
-face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
+/* Tests if a line segment passes through a face. If `check` is nonzero, returns checkpoints */
+face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3], int check) {
 	int i, n, num = 2;
 	leaf *leaves[2];
 	face *cface;
 	float tmp[3], p2[3], dist, dir[3], mag;
+	char *checkpoint;
 
 	/* Get leaves */
 	vec3f_add(p1, dir, p2);
@@ -515,6 +516,16 @@ face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
 	for (n = 0; n < num; n++) { 
 		for (i = 0; i < leaves[n]->n_leaffaces; i++) {
 			cface = &bsp->data.faces[bsp->data.leaffaces[leaves[n]->leafface+i].face];
+
+			if (!(bsp->data.textures[cface->texture].contents & 1)) { /* Not solid */
+				continue;
+			}
+
+			 /* Checkpoint Check */
+			checkpoint = strstr(bsp->data.textures[cface->texture].name, "checkpoint");
+			if ((check && !checkpoint) || (!check && checkpoint)) {
+				continue;
+			}
 
 			if (cface->type != 1) continue; /* Face is a patch or billboard, no collision implemented for these */
 

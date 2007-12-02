@@ -3,6 +3,7 @@
 #include "bsp.h"
 
 const int numPlayers = 2;
+const int totalLaps = 2;
 static Player playerList[2];
 static float windowWidth;
 static float windowHeight;
@@ -21,12 +22,6 @@ static GLUquadricObj *quad;
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	Camera_Init(&playerList[playerNum].camera, bsp);	/* Initialize the camera */
 	tankInitProc(&playerList[playerNum].tank);			/* Initialize the tank */
-
-	playerList[playerNum].tank.obj.position[0] = 8;
-	playerList[playerNum].tank.obj.position[1] = -2.875;
-	playerList[playerNum].tank.obj.position[2] = 6.5 + 4 * playerNum;
-
-	playerList[playerNum].tank.obj.direction[0] = 1; /* Point in the positive X */
 
 	playerList[playerNum].numLast = 10;
 	memset(playerList[playerNum].lastDir, 0, sizeof(float[3]) * playerList[playerNum].numLast);
@@ -91,6 +86,27 @@ static void Game_Read_Config() {
 	fclose(file);
 }
 
+static void Game_Start() {
+	int playerNum;
+
+	for (playerNum = 0; playerNum < numPlayers; playerNum++) {
+		vec3f_clear(playerList[playerNum].tank.obj.velocity);
+		vec3f_clear(playerList[playerNum].tank.obj.direction);
+		vec3f_clear(playerList[playerNum].tank.obj.force);
+
+		playerList[playerNum].tank.obj.position[0] = 10 + (playerNum / 2) * 3;
+		playerList[playerNum].tank.obj.position[1] = -2.875;
+		playerList[playerNum].tank.obj.position[2] = 6.5 + 4 * playerNum;
+
+		playerList[playerNum].tank.obj.direction[0] = 1; /* Point in the positive X */
+
+		playerList[playerNum].checkpoint = 'S';
+		playerList[playerNum].lapNumber = 0;
+	}
+
+	Game_Resize(windowWidth, windowHeight);
+}
+
 void Game_Init() {
 	int i;
 
@@ -120,6 +136,9 @@ void Game_Init() {
 	for (i = 0; i < numPlayers; i++) {
 		Player_Init(i, Cowtank_Init);
 	}
+
+	/* Start the game */
+	Game_Start();
 }
 
 void Game_Resize(int w, int h) {
@@ -135,17 +154,14 @@ void Game_Resize(int w, int h) {
 }
 
 static void Game_HandleKeys() {
-	int i, driving = 0;
+	int i, driving = 0, d;
 	Object *obj;
 	float z[] = {0,0,0}, tmp[3];
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 
 	if (Keyboard_GetState('c', FALSE, TRUE)) {
-		for (i = 0; i < numPlayers; i++) {
-			Player_Init(i, Cowtank_Init);
-		}
-		Game_Resize(windowWidth, windowHeight);
+		Game_Start();
 	}
 	if (Keyboard_GetState('m', FALSE, TRUE)) {
 		if (glIsEnabled(GL_TEXTURE_2D)) {
@@ -171,14 +187,18 @@ static void Game_HandleKeys() {
 			}
 			if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
 				if (obj->speed != 0) {
+					if (!driving) d = obj->speed >= 0 ? 1 : -1;
+					else d = driving;
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * driving, obj->direction);
+						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * d, obj->direction);
 				}
 			}
 			if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
 				if (obj->speed != 0) {
+					if (!driving) d = obj->speed >= 0 ? 1 : -1;
+					else d = driving;
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * driving, obj->direction);
+						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * d, obj->direction);
 				}
 			}
 			if (Keyboard_GetState('g', TRUE, FALSE)) {
@@ -235,7 +255,10 @@ static void Game_HandleDaylight() {
 /* Returns nonzero if the obj1 is inside obj2. Also sets forces if there was a collision */
 static int Game_PlayerCollision(Object *obj1, Object *obj2) {
 	int i;
-	float box1[8][3], box2[8][3], tforce[3], tmp[3];
+	float box1[8][3], box2[8][3];
+	float remf[3], addf[3], tmp[3], addmag;
+	float **closest = NULL, dist;
+	Object *hitter, *hittee;
 	
 	/* Generate hitboxes */
 	Game_GenerateHitbox(obj1, box1);
@@ -244,20 +267,30 @@ static int Game_PlayerCollision(Object *obj1, Object *obj2) {
 	for (i = 0; i < 8; i++) {
 		if (point_in_hitbox(box1[i], box2)) {
 			printf("Object collision\n");
+			
+			/* Get distance between tanks */
+			dist = vec3f_dist(obj1->position, obj2->position) / (obj1->length + obj2->length);
 
-			/* Find out how much force to transfer */
-			vec3f_set(obj1->force, tforce);
-			//vec3f_
-			//vec3f_scale(obj1->force, obj1->speed / obj1->maxSpeed, tforce);
+			if (vec3f_mag(obj1->force) > vec3f_mag(obj2->force)) {
+				hitter = obj1; hittee = obj2;
+			}
+			else {
+				hitter = obj2; hittee = obj1;
+			}
 
-			/* Add a force to the hittee in the hitters direction */
-			/* But first find out how much of this is transfered to the ground */
-			vec3f_set(tforce, tmp);
-			vec3f_scale(tmp, vec3f_dot(obj1->direction, obj2->direction), tmp);
-			vec3f_add(obj2->force, tmp, obj2->force);
+			vec3f_set(hitter->force, tmp);
+			vec3f_norm(tmp);
 
-			/* Every action has an equal and opposite reaction */
-			vec3f_sub(tforce, obj1->force, obj1->force);
+			/* Find out how much force can be applied to obj2 */
+			addmag = vec3f_dot(tmp, hittee->direction);
+			vec3f_scale(hittee->direction, addmag * dist, addf);
+
+			/* Remaining force is added to obj1 */
+			vec3f_scale(hitter->direction, -(1-fabs(addmag)) * dist, remf);
+
+			/* Add forces */
+			//vec3f_sub(remf, hitter->force, hitter->force); /* Don't add anything to hitter */
+			vec3f_add(addf, hittee->force, hittee->force);
 
 			return 1;
 		}
@@ -265,7 +298,7 @@ static int Game_PlayerCollision(Object *obj1, Object *obj2) {
 	return 0;
 }
 
-void Game_Run() {
+static void Game_RunPhysics() {
 	int i, x;
 	float dir[3], hitbox[8][3], ftot[3], tmp[3], up[] = {0, 0, 0};
 	float hitboxadjust[] = {0, EPSILON, 0};
@@ -273,10 +306,6 @@ void Game_Run() {
 	Object *obj, *obj2;
 	face *cface;
 	float angle, fric;
-
-	Game_HandleKeys();
-
-	Game_HandleDaylight();
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -302,22 +331,26 @@ void Game_Run() {
 
 		vec3f_set(ftot, dir);
 		vec3f_norm(dir);
-		vec3f_scale(dir, EPSILON, dir);
+		vec3f_scale(dir, 20 * EPSILON, dir);
 
 		/* Get direction vector */
 		obj->onGround = 0;
 		Game_GenerateHitbox(obj, hitbox);
 		for (x = 0; x < 8; x++) {
+			vec3f_clear(hitboxadjust);
+			vec3f_scale(obj->direction, -10 * EPSILON, tmp);
+			vec3f_add(hitboxadjust, tmp, hitboxadjust);
+			vec3f_scale(obj->upAngles, 10 * EPSILON, tmp);
+			vec3f_add(hitboxadjust, tmp, hitboxadjust);
+
 			if (x >= 4) { /* Only use direction for top 4 points */
-				vec3f_set(obj->direction, tmp); 
-				vec3f_scale(vec3f_norm(tmp), EPSILON, tmp);
-				cface = bsp_face_collision(bsp, hitbox[x], tmp);
+				vec3f_scale(obj->force, 20 * EPSILON, tmp);
+				cface = bsp_face_collision(bsp, hitbox[x], tmp, FALSE);
 			}
 			else if (x < 4) {
-				cface = bsp_face_collision(bsp, hitbox[x], dir);
+				cface = bsp_face_collision(bsp, hitbox[x], dir, FALSE);
 			}
 
-//			vec3f_add(hitboxadjust, hitbox[x], hitbox[x]);
 			if (cface) {
 				obj->onGround = 1;
 
@@ -335,20 +368,19 @@ void Game_Run() {
 					fric += 0.03;
 				}
 
+#ifdef _PRINTDEBUG
 				printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
+#endif
 				vec3f_scale(cnormal, vec3f_dot(cnormal, ftot), tmp);
 				vec3f_sub(tmp, ftot, ftot);
-
-				continue;
 			}
 			else {
-				obj->onGround = 1;
-			/*	vec3f_add(hitbox[x], ftot, tmp); 
+				vec3f_add(hitbox[x], ftot, tmp); 
 				if (tmp[1] < -2.875) {
+					obj->onGround = 1;
 					vec3f_sub(grav, ftot, ftot);
 					break;
 				}
-			*/
 			}
 		}
 		if (vec3f_mag(up) != 0) {
@@ -360,7 +392,7 @@ void Game_Run() {
 			/* Apply friction to left and right directions (relative to tank) */
 			vec3f_cross(obj->direction, obj->upAngles, tmp);
 			vec3f_norm(tmp);
-			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity), tmp);
+			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity) * 0.9, tmp);
 			vec3f_sub(tmp, ftot, ftot);
 
 			/* Apply friction opposite to driving direction */
@@ -380,13 +412,52 @@ void Game_Run() {
 		vec3f_scale(obj->force, 1/obj->mass, obj->velocity);
 
 		if (obj->position[1] < -2.875) {
-			obj->position[1] = -2.87;
+		//	obj->position[1] = -2.87;
 		}
 
 		obj->speed = vec3f_mag(obj->velocity);
 	}
-	printf("Done. %.0f\n", frame);
+}
 
+static void Game_Checkpoint() {
+	int i;
+	face *cface;
+	float origin[3], dir[3];
+	char *checkName, newCheckpoint;
+
+	for (i = 0; i < numPlayers; i++) {
+		vec3f_set(playerList[i].tank.obj.position, origin);
+		origin[1] += playerList[i].tank.obj.height / 2;
+		vec3f_set(playerList[i].tank.obj.direction, dir);
+		vec3f_scale(dir, -playerList[i].tank.obj.speed, dir);
+
+		/* Check if tank is inside a checkpoint */
+		if (cface = bsp_face_collision(bsp, origin, dir, TRUE)) {
+			checkName = strstr(bsp->data.textures[cface->texture].name, "checkpoint");
+			if (checkName) {
+				newCheckpoint = checkName[10];
+
+#ifdef _PRINTDEBUG
+				printf("Collision with checkpoint %c\n", newCheckpoint);
+#endif
+
+				if (newCheckpoint == 'S' && playerList[i].checkpoint == '2') {
+					playerList[i].lapNumber++;
+				}
+				else if ((newCheckpoint == '1' && playerList[i].checkpoint == 'S') ||
+						(newCheckpoint > playerList[i].checkpoint)) {
+					playerList[i].checkpoint = newCheckpoint;
+				}
+			}
+		}
+	}
+}
+
+void Game_Run() {
+	Game_HandleKeys();
+	Game_HandleDaylight();
+	Game_RunPhysics();
+	Game_Checkpoint();
 	frame++;
 }
 
@@ -595,8 +666,8 @@ static void Game_Render_Overlay(int playerNum) {
 	glColor3d(1, 0, 0);
 	text_output(2, 92, "Player %d", playerNum+1);
 
-	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f", 
-		camera->position[0], camera->position[1], camera->position[2]);
+	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f - Lap number: %d", 
+		camera->position[0], camera->position[1], camera->position[2], playerList[playerNum].lapNumber + 1);
 
 	glColor3d(0, 0, 0);
 	text_output(2, 50, playerList[playerNum].centerText);

@@ -217,7 +217,7 @@ extern void      bsp_draw_faces(bspfile *, int *, int);
 extern leaf	    *bsp_find_leaf(bspfile *, float[3]);
 extern int	 	 bsp_leaf_visible(bspfile *, leaf *, leaf *);
 extern plane    *bsp_simple_collision(bspfile *, float[3], float[3], leaf *, leaf *);
-extern face	    *bsp_face_collision(bspfile *, float[3], float[3]);
+extern face	    *bsp_face_collision(bspfile *, float[3], float[3], int);
 extern lightvol *bsp_lightvol(bspfile *, float[3]);
 
 #endif /* HAVE_BSP_H */
