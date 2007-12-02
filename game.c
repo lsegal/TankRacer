@@ -23,7 +23,7 @@ static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	tankInitProc(&playerList[playerNum].tank);			/* Initialize the tank */
 
 	playerList[playerNum].tank.obj.position[0] = 8;
-	playerList[playerNum].tank.obj.position[1] = -2.87;
+	playerList[playerNum].tank.obj.position[1] = -2.875;
 	playerList[playerNum].tank.obj.position[2] = 6.5 + 4 * playerNum;
 
 	playerList[playerNum].tank.obj.direction[0] = 1; /* Point in the positive X */
@@ -147,6 +147,15 @@ static void Game_HandleKeys() {
 		}
 		Game_Resize(windowWidth, windowHeight);
 	}
+	if (Keyboard_GetState('m', FALSE, TRUE)) {
+		if (glIsEnabled(GL_TEXTURE_2D)) {
+			glDisable(GL_TEXTURE_2D);
+		}
+		else {
+			glEnable(GL_TEXTURE_2D);
+		}
+	}
+
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -220,7 +229,7 @@ void Game_Run() {
 	float grav[] = { 0, -gravity, 0 };
 	Object *obj;
 	face *cface;
-	float mag, fric = 0.2;
+	float mag, fric = 0.05;
 
 	Game_HandleKeys();
 
@@ -239,7 +248,7 @@ void Game_Run() {
 
 		vec3f_set(ftot, dir);
 		vec3f_norm(dir);
-		vec3f_scale(dir, 5 * EPSILON, dir);
+		vec3f_scale(dir, EPSILON, dir);
 
 		/* Get direction vector */
 		Game_GenerateHitbox(obj, hitbox);
@@ -247,7 +256,7 @@ void Game_Run() {
 		for (x = 0; x < 8; x++) {
 			if (x >= 4) { /* Only use force for top 4 points */
 				vec3f_set(obj->force, tmp); 
-				vec3f_scale(vec3f_norm(tmp), 5 * EPSILON, tmp);
+				vec3f_scale(vec3f_norm(tmp), EPSILON, tmp);
 				cface = bsp_face_collision(bsp, hitbox[x], tmp);
 			}
 			else {
@@ -276,6 +285,12 @@ void Game_Run() {
 				vec3f_scale(obj->direction, -mag, tmp);
 
 				continue;
+			}
+			else {
+				vec3f_add(hitbox[x], ftot, tmp); 
+				if (tmp[1] < -2.875) {
+					vec3f_sub(grav, ftot, ftot);
+				}
 			}
 		}
 		vec3f_norm(up);
@@ -352,7 +367,6 @@ static void Game_Draw_Sky() {
 	if (amb > 0.5f) amb = 0.5f; 
 
 	/* Draw sky sphere */
-    glDisable(GL_BLEND);
 	glColor3f(0.1 + amb, 0.1 + amb, 0.1 + amb);
 	glBindTexture(GL_TEXTURE_2D, skyTexture);
 	glPushMatrix();
