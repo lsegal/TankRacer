@@ -35,7 +35,7 @@
 typedef unsigned char ubyte;
 
 #include <math.h>
-#define EPSILON 0.03125f
+#define EPSILON 0.003125f
 #define PI 3.141592653585
 #define DEG2RAD(n) (PI * n / 180)
 #define RAD2DEG(n) (180 * n / PI)

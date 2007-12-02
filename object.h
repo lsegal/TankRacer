@@ -6,6 +6,7 @@ typedef void (ObjectCallbackFunc)(void*,void*);
 typedef struct Object {
 	float position[3];		/* Position point */
 	float direction[3];		/* The direction the tank points in (not to be confused with its velocity) */
+	float acceleration[3];  /* Acceleration vector */
 	float velocity[3];		/* Velocity vector */
 	float upAngles[3];		/* Up angle (normalized vector) */
 	float force[3];			/* Force vector (not normalized) */
