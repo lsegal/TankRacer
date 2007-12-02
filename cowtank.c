@@ -77,9 +77,10 @@ void Cowtank_Init(Tank *self) {
 
 	/* Initialize basic object constants */
 	self->obj.mass = 1;
-	self->obj.maxAccel = 0.5;
-	self->obj.maxSpeed = 0.5;
-	self->turnAbility = 10;
+	self->obj.maxAccel = 0.2;
+	self->obj.maxSpeed = 5;
+	self->turnAbility = 1;
+	self->tankBlur = FALSE;
 }
 
 /*--------------------------------------------------
@@ -129,10 +130,11 @@ void Tank_Draw(Object *self, Tank *tank) {
 			glAccum(GL_LOAD, 1);
 			for (i = 1; i <= s * 5; i++) {
 				double q = (s * i) / 100;
+				double t = (self->speed >= 0 ? -1 : 1) * q * 2;
 
 				/* Blur the tank in the negative velocity direction */
 				glPushMatrix();
-				glTranslated((self->speed >= 0 ? 1 : -1) * q * 2, 0, 0);
+				glTranslated(t * self->force[0], t * self->force[1], t * self->force[2]);
 				glScaled(1 + q * 2, 1 + q, 1 + q);
 				glCallList(tankBody);
 				glPopMatrix();
