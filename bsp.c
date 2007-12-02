@@ -491,7 +491,7 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	}
 	angle += acos(vec3f_dot(tmp, firsttmp));
 
-	return fabs(angle - 2*PI) < 0.1f;
+	return fabs(angle - 2*PI) < 0.01f;
 }
 
 /* Tests if a line segment passes through a face */
@@ -527,7 +527,7 @@ face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
 			vec3f_sub(bsp->data.vertexes[cface->vertex].position, p1, tmp);
 			dist = -vec3f_dot(cface->normal, tmp) / vec3f_dot(cface->normal, dir);
 
-			if (dist > 3.0f) continue; /* Too far to be a collision */
+			if (dist > 0.1f) continue; /* Too far to be a collision */
 
 			vec3f_scale(dir, dist, tmp);
 			vec3f_add(p1, tmp, tmp);

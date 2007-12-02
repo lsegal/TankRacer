@@ -102,6 +102,40 @@ float *vec3f_rotp(float p1[3], float p2[3], float line[3], float angle, float ou
 	return out;
 }
 
+/* Returns nonzero if a point is inside a hitbox */
+int point_in_hitbox(float p[3], float hitbox[8][3]) {
+	int compare[6] = {0,0,0,0,0,0};
+	int i;
+
+	/* Basic algorithm:
+	 * Count the number of x values smaller, number of x values greater, y values smaller, etc..
+	 * and then make sure that each count is equal to 4, since there should be 4 points smaller
+	 * than the reference point on x, 4 more pointers greater on x with the same on y and z.
+	 *
+	 * Note that the term "greater" and "smaller" should be read as "X or equal to". This also means
+	 * that "4 points" should be read as "at least 4 points". This will only occur if one dimension
+	 * of the hitbox is zero and the point lies on the plane.
+	 *
+	 * The benefit of this method is that we don't care which sides of the hitbox are right, left,
+	 * top, bottom, back, front.
+	 */
+	for (i = 0; i < 8; i++) {
+		if (hitbox[i][0] >= p[0]) compare[0]++;
+		if (hitbox[i][0] <= p[0]) compare[1]++;
+		if (hitbox[i][1] >= p[1]) compare[2]++;
+		if (hitbox[i][1] <= p[1]) compare[3]++;
+		if (hitbox[i][2] >= p[2]) compare[4]++;
+		if (hitbox[i][2] <= p[2]) compare[5]++;
+	}
+
+	/* Check for hit */
+	for (i = 0; i < 6; i++) {
+		if (compare[i] < 4) return 0;
+	}
+
+	return 1;
+}
+
 /* Multiplies a 4x4 matrix by another */
 float *mat4f_mult(float m1[16], float m2[16], float out[16]) {
     int i, j, k;

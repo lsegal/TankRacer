@@ -172,13 +172,13 @@ static void Game_HandleKeys() {
 			if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
 				if (obj->speed != 0) {
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2), obj->direction);
+						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * driving, obj->direction);
 				}
 			}
 			if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
 				if (obj->speed != 0) {
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2), obj->direction);
+						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * driving, obj->direction);
 				}
 			}
 			if (Keyboard_GetState('g', TRUE, FALSE)) {
@@ -199,15 +199,24 @@ static void Game_HandleKeys() {
 
 static void Game_GenerateHitbox(Object *obj, float hitbox[8][3]) {
 	int i, n = -1;
+	float right[3], tw[3], tl[3], th[3] = {0, 0, 0};
 	float w = obj->width / 2, h = obj->height, l = obj->length / 2;
 
+	vec3f_cross(obj->direction, obj->upAngles, right);
 	for (i = 0; i < 8; i++) { 
 		vec3f_set(obj->position, hitbox[i]);
 
-		if (i >= 4)	hitbox[i][1] += h;
+		if (i == 4) {
+			vec3f_scale(obj->upAngles, h, th);
+		}
 		if ((i & 1) == 0) n = -n;
-		hitbox[i][0] += n * w;
-		hitbox[i][2] += ((i & 1) == 0 ? 1 : -1) * l;
+
+		vec3f_scale(right, n * w, tw);
+		vec3f_scale(obj->direction, ((i & 1) == 0 ? 1 : -1) * l, tl);
+
+		vec3f_add(hitbox[i], tw, hitbox[i]);
+		vec3f_add(hitbox[i], tl, hitbox[i]);
+		vec3f_add(hitbox[i], th, hitbox[i]);
 	}
 }
 
@@ -218,18 +227,52 @@ static void Game_HandleDaylight() {
 	}
 	else {
 		ambFunc = 0.5 * sin(frame/1000) + 0.38;
+		if (ambFunc < 0.28) ambFunc = 0.28;
 	}
 	if (ambFunc < 0.1) ambFunc = 0.1;
+}
+
+/* Returns nonzero if the obj1 is inside obj2. Also sets forces if there was a collision */
+static int Game_PlayerCollision(Object *obj1, Object *obj2) {
+	int i;
+	float box1[8][3], box2[8][3], tforce[3], tmp[3];
+	
+	/* Generate hitboxes */
+	Game_GenerateHitbox(obj1, box1);
+	Game_GenerateHitbox(obj2, box2);
+
+	for (i = 0; i < 8; i++) {
+		if (point_in_hitbox(box1[i], box2)) {
+			printf("Object collision\n");
+
+			/* Find out how much force to transfer */
+			vec3f_set(obj1->force, tforce);
+			//vec3f_
+			//vec3f_scale(obj1->force, obj1->speed / obj1->maxSpeed, tforce);
+
+			/* Add a force to the hittee in the hitters direction */
+			/* But first find out how much of this is transfered to the ground */
+			vec3f_set(tforce, tmp);
+			vec3f_scale(tmp, vec3f_dot(obj1->direction, obj2->direction), tmp);
+			vec3f_add(obj2->force, tmp, obj2->force);
+
+			/* Every action has an equal and opposite reaction */
+			vec3f_sub(tforce, obj1->force, obj1->force);
+
+			return 1;
+		}
+	}
+	return 0;
 }
 
 void Game_Run() {
 	int i, x;
 	float dir[3], hitbox[8][3], ftot[3], tmp[3], up[] = {0, 0, 0};
 	float hitboxadjust[] = {0, EPSILON, 0};
-	float grav[] = { 0, -gravity, 0 };
-	Object *obj;
+	float grav[] = { 0, -gravity, 0 }, cnormal[3];
+	Object *obj, *obj2;
 	face *cface;
-	float mag, fric = 0.05;
+	float angle, fric;
 
 	Game_HandleKeys();
 
@@ -238,8 +281,19 @@ void Game_Run() {
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
 
+		fric = 0.05; /* World friction */
+
 		/* Let the object think */
 		obj->thinkFunc(obj, obj->funcData);
+
+		/* Tank vs Tank collision */
+		for (x = 0; x < numPlayers; x++) {
+			if (x == i) continue;
+			obj2 = &playerList[x].tank.obj;
+			if (!Game_PlayerCollision(obj, obj2)) {
+				Game_PlayerCollision(obj2, obj);
+			}
+		}
 
 		/* Add gravity */
 		vec3f_set(obj->force, ftot);
@@ -251,15 +305,15 @@ void Game_Run() {
 		vec3f_scale(dir, EPSILON, dir);
 
 		/* Get direction vector */
-		Game_GenerateHitbox(obj, hitbox);
 		obj->onGround = 0;
+		Game_GenerateHitbox(obj, hitbox);
 		for (x = 0; x < 8; x++) {
-			if (x >= 4) { /* Only use force for top 4 points */
-				vec3f_set(obj->force, tmp); 
+			if (x >= 4) { /* Only use direction for top 4 points */
+				vec3f_set(obj->direction, tmp); 
 				vec3f_scale(vec3f_norm(tmp), EPSILON, tmp);
 				cface = bsp_face_collision(bsp, hitbox[x], tmp);
 			}
-			else {
+			else if (x < 4) {
 				cface = bsp_face_collision(bsp, hitbox[x], dir);
 			}
 
@@ -267,34 +321,40 @@ void Game_Run() {
 			if (cface) {
 				obj->onGround = 1;
 
-				if (x < 4) {
-					if (acos(vec3f_dot(cface->normal, obj->upAngles)) < PI/8) {
-						vec3f_add(cface->normal, up, up);
-					}
+				vec3f_set(cface->normal, cnormal);
+
+				angle = acos(vec3f_dot(cnormal, obj->upAngles));
+				if (x < 4 && angle < PI/8) {
+					vec3f_add(cnormal, up, up);
+				}
+				else if (angle >= PI/8) {
+					cnormal[1] = 0;
 				}
 
 				if (strstr(bsp->data.textures[cface->texture].name, "grass")) {
-					fric += 0.01;
+					fric += 0.03;
 				}
 
 				printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
-				vec3f_scale(cface->normal, vec3f_dot(cface->normal, ftot), tmp);
+				vec3f_scale(cnormal, vec3f_dot(cnormal, ftot), tmp);
 				vec3f_sub(tmp, ftot, ftot);
-
-				mag = vec3f_mag(ftot) * vec3f_dot(obj->direction, ftot);
-				vec3f_scale(obj->direction, -mag, tmp);
 
 				continue;
 			}
 			else {
-				vec3f_add(hitbox[x], ftot, tmp); 
+				obj->onGround = 1;
+			/*	vec3f_add(hitbox[x], ftot, tmp); 
 				if (tmp[1] < -2.875) {
 					vec3f_sub(grav, ftot, ftot);
+					break;
 				}
+			*/
 			}
 		}
-		vec3f_norm(up);
-		vec3f_set(up, obj->upAngles);
+		if (vec3f_mag(up) != 0) {
+			vec3f_norm(up);
+			vec3f_set(up, obj->upAngles);
+		}
 
 		if (fabs(obj->speed) > EPSILON) {
 			/* Apply friction to left and right directions (relative to tank) */
@@ -318,6 +378,10 @@ void Game_Run() {
 
 		vec3f_add(obj->velocity, obj->position, obj->position);
 		vec3f_scale(obj->force, 1/obj->mass, obj->velocity);
+
+		if (obj->position[1] < -2.875) {
+			obj->position[1] = -2.87;
+		}
 
 		obj->speed = vec3f_mag(obj->velocity);
 	}
@@ -416,24 +480,55 @@ static void Game_Render_Scene(int playerNum) {
 	for (i = 0; i < numPlayers; i++) {
 		tank = &playerList[i].tank;
 
+#ifndef _PRINTDEBUG
 		glBegin(GL_LINES);
 		glDisable(GL_BLEND);
 		glDisable(GL_CULL_FACE);
-	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-	glEnable(GL_LINE_SMOOTH);
+		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+		glEnable(GL_LINE_SMOOTH);
 		glColor3d(1,0,0);
 		{
 			float a[3], b[3];
 			vec3f_set(tank->obj.position, a);
 			vec3f_set(tank->obj.force, b);
-			vec3f_scale(b, 3, b);
+			vec3f_scale(b, 5, b);
 			vec3f_add(b, tank->obj.position, b);
-			a[1] += 2.3;
-			b[1] += 2.3;
+			a[1] += tank->obj.height + 0.05;
+			b[1] += tank->obj.height + 0.05;
 			glVertex3fv(a);
 			glVertex3fv(b);
 		}
 		glEnd();
+
+		glBegin(GL_LINES);
+		glColor3d(1,1,1);
+		glPointSize(2);
+		{
+			float hb[8][3];
+			int n;
+			Game_GenerateHitbox(&tank->obj, hb);
+			for (n = 0; n < 8; n++) 
+				glVertex3fv(hb[n]);
+
+			glVertex3fv(hb[0]);
+			glVertex3fv(hb[2]);
+			glVertex3fv(hb[1]);
+			glVertex3fv(hb[3]);
+			glVertex3fv(hb[4]);
+			glVertex3fv(hb[6]);
+			glVertex3fv(hb[5]);
+			glVertex3fv(hb[7]);
+			glVertex3fv(hb[0]);
+			glVertex3fv(hb[4]);
+			glVertex3fv(hb[1]);
+			glVertex3fv(hb[5]);
+			glVertex3fv(hb[2]);
+			glVertex3fv(hb[6]);
+			glVertex3fv(hb[3]);
+			glVertex3fv(hb[7]);
+		}
+		glEnd();
+#endif
 
 		glPushMatrix();
 		glTranslatef(tank->obj.position[0], tank->obj.position[1], tank->obj.position[2]);
