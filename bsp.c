@@ -491,7 +491,7 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	}
 	angle += acos(vec3f_dot(tmp, firsttmp));
 
-	return fabs(angle - 2*PI) < 0.01f;
+	return fabs(angle - 2*PI) < 0.15f;
 }
 
 /* Tests if a line segment passes through a face */
@@ -518,16 +518,11 @@ face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
 
 			if (cface->type != 1) continue; /* Face is a patch or billboard, no collision implemented for these */
 
-			if (vec3f_dot(cface->normal, dir) >= 0) continue; /* Face is back facing */
-
-			/* Check if the point is in front of the plane */
-//			d1 = vec3f_classify(p1, cface->normal, vec3f_dot(cface->normal, bsp->data.vertexes[cface->vertex].position));
-//			if (d1 < 0) continue;
-
 			vec3f_sub(bsp->data.vertexes[cface->vertex].position, p1, tmp);
 			dist = -vec3f_dot(cface->normal, tmp) / vec3f_dot(cface->normal, dir);
 
-			if (dist > 0.1f) continue; /* Too far to be a collision */
+			if (fabs(dist) > 0.3f) continue; /* Too far to be a collision */
+			if (vec3f_dot(cface->normal, dir) >= 0) continue; /* Face is back facing */
 
 			vec3f_scale(dir, dist, tmp);
 			vec3f_add(p1, tmp, tmp);
@@ -544,22 +539,25 @@ face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
 }
 
 lightvol *bsp_lightvol(bspfile *bsp, float pos[3]) {
+	int nx, ny, nz, x, y, z, index;
+	if (bsp->data.n_lightvols == 0) return NULL;
+
 	/* Max grid values */
-	int nx = floor(bsp->data.models[0].maxs[0] / 64) - ceil(bsp->data.models[0].mins[0] / 64) + 1;
-	int ny = floor(bsp->data.models[0].maxs[1] / 64) - ceil(bsp->data.models[0].mins[1] / 64) + 1;
-	int nz = floor(bsp->data.models[0].maxs[2] / 128) - ceil(bsp->data.models[0].mins[2] / 128) + 1;
+	nx = floor(bsp->data.models[0].maxs[0] / 64) - ceil(bsp->data.models[0].mins[0] / 64) + 1;
+	ny = floor(bsp->data.models[0].maxs[1] / 64) - ceil(bsp->data.models[0].mins[1] / 64) + 1;
+	nz = floor(bsp->data.models[0].maxs[2] / 128) - ceil(bsp->data.models[0].mins[2] / 128) + 1;
 
 	/* Convert position into a grid value */
 	/* Remember to unscwivel these values! */
-	int x = floor(((pos[0] * BSP_SCALE) - bsp->data.models[0].mins[0]) / 64);
-	int y = floor(((-pos[2] * BSP_SCALE) - bsp->data.models[0].mins[1]) / 64);
-	int z = floor(((pos[1] * BSP_SCALE) - bsp->data.models[0].mins[2]) / 128);
+	x = floor(((pos[0] * BSP_SCALE) - bsp->data.models[0].mins[0]) / 64);
+	y = floor(((-pos[2] * BSP_SCALE) - bsp->data.models[0].mins[1]) / 64);
+	z = floor(((pos[1] * BSP_SCALE) - bsp->data.models[0].mins[2]) / 128);
+	index = (nx*ny) * z + (nx * y) + x;
 
 	/* Invalid indexes */
-	if (x < 0 || y < 0 || z < 0) return NULL;
-	if (x >= nx || y >= ny || z >= nz) return NULL;
+	if (index < 0 || index >= nx*ny*nz) return NULL;
 
-	return &bsp->data.lightvols[(nx*ny) * z + (nx * y) + x];
+	return &bsp->data.lightvols[index];
 }
 
 /* Loads a .bsp file into memory returning a memory address to allocated data */
