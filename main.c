@@ -25,7 +25,7 @@ static void init_gl() {
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_ACCUM);
 	glutInitWindowSize(800, 600);
 	glutInitWindowPosition(600, 150);
-	glutCreateWindow("Quake3BSP");
+	glutCreateWindow("Tank Racer");
 	glutIdleFunc(run);
 	glutDisplayFunc(render);
 	glutReshapeFunc(resize);
