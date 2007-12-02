@@ -432,13 +432,15 @@ int bsp_leaf_visible(bspfile *bsp, leaf *visLeaf, leaf *testLeaf) {
 }
 
 /* Tests if a line passes through a brush */
-plane *bsp_simple_collision(bspfile *bsp, float p1[3], float p2[3], leaf *leaf1, leaf *leaf2) {
+plane *bsp_simple_collision(bspfile *bsp, float p1[3], float dir[3], leaf *leaf1, leaf *leaf2) {
 	int i, j, n, count = 2;
-	float d1, d2;
+	float d1, d2, p2[3];
 	leaf *leaves[2];
 	leafbrush *lbrush;
 	brush *cbrush;
 	plane *cplane;
+
+	vec3f_add(p1, dir, p2);
 
 	if (!leaf1) leaf1 = bsp_find_leaf(bsp, p1);
 	if (!leaf2) leaf2 = bsp_find_leaf(bsp, p2);
@@ -489,33 +491,44 @@ static int bsp_point_in_face(bspfile *bsp, float p[3], face *cface) {
 	}
 	angle += acos(vec3f_dot(tmp, firsttmp));
 
-	return fabs(angle - 2*PI) < 4.0f;
+	return angle > 5.6;
 }
 
 /* Tests if a line segment passes through a face */
-face *bsp_face_collision(bspfile *bsp, float p1[3], float dir[3]) {
+face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3]) {
 	int i, n, num = 2;
 	leaf *leaves[2];
 	face *cface;
-	float tmp[3], p2[3], dist;
+	float tmp[3], p2[3], dist, dir[3], mag;
 
 	/* Get leaves */
 	vec3f_add(p1, dir, p2);
 	leaves[0] = bsp_find_leaf(bsp, p1);
 	leaves[1] = bsp_find_leaf(bsp, p2);
-	if (leaves[0] == leaves[1]) num = 1;
+	if (leaves[0] == leaves[1]) return NULL;
 
 	/* Setup parametric equation to get point on plane */
+	mag = vec3f_mag(zdir);
+	vec3f_set(zdir, dir);
 	vec3f_norm(dir);
 
 	for (n = 0; n < num; n++) { 
 		for (i = 0; i < leaves[n]->n_leaffaces; i++) {
 			cface = &bsp->data.faces[bsp->data.leaffaces[leaves[n]->leafface+i].face];
 
+			if (cface->type != 1) continue; /* Face is a patch or billboard, no collision implemented for these */
+
 			if (vec3f_dot(cface->normal, dir) >= 0) continue; /* Face is back facing */
+
+			/* Check if the point is in front of the plane */
+//			d1 = vec3f_classify(p1, cface->normal, vec3f_dot(cface->normal, bsp->data.vertexes[cface->vertex].position));
+//			if (d1 < 0) continue;
 
 			vec3f_sub(bsp->data.vertexes[cface->vertex].position, p1, tmp);
 			dist = -vec3f_dot(cface->normal, tmp) / vec3f_dot(cface->normal, dir);
+
+			if (dist > 0.1f) continue; /* Too far to be a collision */
+
 			vec3f_scale(dir, dist, tmp);
 			vec3f_add(p1, tmp, tmp);
 

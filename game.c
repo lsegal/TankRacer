@@ -11,6 +11,7 @@ static bspfile *bsp;
 static char mapName[128];
 static float gravity = 0.37338;
 typedef void (*TankInitProc)(Tank *, ...);
+static float ambFunc;
 
 static GLuint skyTexture;
 static GLuint cloudTexture;
@@ -106,6 +107,7 @@ void Game_Init() {
 	cloudTexture = load_texture_jpeg("textures/sky2.jpg");
 	fogTexture = load_texture_jpeg("textures/clouds.jpg");
 	quad = gluNewQuadric();
+	ambFunc = 0.0f;
 
 	/* Load the map */
 	bsp = bsp_load(mapName);
@@ -139,6 +141,13 @@ static void Game_HandleKeys() {
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 
+	if (Keyboard_GetState('c', FALSE, TRUE)) {
+		for (i = 0; i < numPlayers; i++) {
+			Player_Init(i, Cowtank_Init);
+		}
+		Game_Resize(windowWidth, windowHeight);
+	}
+
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
 
@@ -154,13 +163,13 @@ static void Game_HandleKeys() {
 			if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
 				if (obj->speed != 0) {
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						playerList[i].tank.turnAbility * 1/ceil(obj->speed*10), obj->direction);
+						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2), obj->direction);
 				}
 			}
 			if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
 				if (obj->speed != 0) {
 					vec3f_rotp(obj->direction, z, obj->upAngles, 
-						-playerList[i].tank.turnAbility * 1/ceil(obj->speed*10), obj->direction);
+						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2), obj->direction);
 				}
 			}
 			if (Keyboard_GetState('g', TRUE, FALSE)) {
@@ -172,7 +181,7 @@ static void Game_HandleKeys() {
 
 			if (driving || fabs(obj->speed) > EPSILON) {
 				vec3f_set(obj->direction, tmp);
-				vec3f_scale(tmp, 0.2 * driving, tmp);
+				vec3f_scale(tmp, obj->maxAccel * driving, tmp);
 				vec3f_add(obj->force, tmp, obj->force);
 			}
 		}
@@ -193,6 +202,17 @@ static void Game_GenerateHitbox(Object *obj, float hitbox[8][3]) {
 	}
 }
 
+/* Generates the light attenuation from the sun */
+static void Game_HandleDaylight() {
+	if (frame / 100 < 0.38) {
+		ambFunc = frame / 100;
+	}
+	else {
+		ambFunc = 0.5 * sin(frame/1000) + 0.38;
+	}
+	if (ambFunc < 0.1) ambFunc = 0.1;
+}
+
 void Game_Run() {
 	int i, x;
 	float dir[3], hitbox[8][3], ftot[3], tmp[3], up[] = {0, 0, 0};
@@ -200,9 +220,11 @@ void Game_Run() {
 	float grav[] = { 0, -gravity, 0 };
 	Object *obj;
 	face *cface;
-	float mag;
+	float mag, fric = 0.2;
 
 	Game_HandleKeys();
+
+	Game_HandleDaylight();
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -210,19 +232,30 @@ void Game_Run() {
 		/* Let the object think */
 		obj->thinkFunc(obj, obj->funcData);
 
+		/* Add gravity */
 		vec3f_set(obj->force, ftot);
+		vec3f_scale(grav, obj->mass, tmp);
 		vec3f_add(ftot, grav, ftot);
 
 		vec3f_set(ftot, dir);
 		vec3f_norm(dir);
-		vec3f_scale(dir, 2 * EPSILON, dir);
+		vec3f_scale(dir, 5 * EPSILON, dir);
 
 		/* Get direction vector */
 		Game_GenerateHitbox(obj, hitbox);
 		obj->onGround = 0;
 		for (x = 0; x < 8; x++) {
-			vec3f_add(hitboxadjust, hitbox[x], hitbox[x]);
-			if (cface = bsp_face_collision(bsp, hitbox[x], dir)) {
+			if (x >= 4) { /* Only use force for top 4 points */
+				vec3f_set(obj->force, tmp); 
+				vec3f_scale(vec3f_norm(tmp), 5 * EPSILON, tmp);
+				cface = bsp_face_collision(bsp, hitbox[x], tmp);
+			}
+			else {
+				cface = bsp_face_collision(bsp, hitbox[x], dir);
+			}
+
+//			vec3f_add(hitboxadjust, hitbox[x], hitbox[x]);
+			if (cface) {
 				obj->onGround = 1;
 
 				if (x < 4) {
@@ -231,38 +264,47 @@ void Game_Run() {
 					}
 				}
 
+				if (strstr(bsp->data.textures[cface->texture].name, "grass")) {
+					fric += 0.01;
+				}
+
 				printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
-				vec3f_scale(cface->normal, vec3f_dot(cface->normal, ftot) * obj->mass, tmp);
+				vec3f_scale(cface->normal, vec3f_dot(cface->normal, ftot), tmp);
 				vec3f_sub(tmp, ftot, ftot);
 
 				mag = vec3f_mag(ftot) * vec3f_dot(obj->direction, ftot);
 				vec3f_scale(obj->direction, -mag, tmp);
+
+				continue;
 			}
 		}
 		vec3f_norm(up);
 		vec3f_set(up, obj->upAngles);
 
-		/* Apply friction to left and right directions (relative to tank) */
-		vec3f_cross(obj->direction, obj->upAngles, tmp);
-		vec3f_norm(tmp);
-		vec3f_scale(tmp, vec3f_dot(tmp, ftot), tmp);
-		vec3f_sub(tmp, ftot, ftot);
+		if (fabs(obj->speed) > EPSILON) {
+			/* Apply friction to left and right directions (relative to tank) */
+			vec3f_cross(obj->direction, obj->upAngles, tmp);
+			vec3f_norm(tmp);
+			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity), tmp);
+			vec3f_sub(tmp, ftot, ftot);
 
-		/* Apply friction in driving direction */
-		vec3f_set(obj->direction, tmp);
-		vec3f_norm(tmp);
-		vec3f_scale(tmp, vec3f_dot(tmp, ftot) * vec3f_mag(ftot), tmp);
-		vec3f_sub(tmp, ftot, ftot);
+			/* Apply friction opposite to driving direction */
+			vec3f_set(obj->direction, tmp);
+			vec3f_norm(tmp);
+			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity) * fric, tmp);
+			vec3f_sub(tmp, ftot, ftot);
+		}
 		
 		if (fabs(vec3f_mag(ftot)) < EPSILON) {
 			vec3f_clear(ftot);
 		}
 
 		vec3f_set(ftot, obj->force);
-		obj->speed = vec3f_mag(ftot);
 
-		vec3f_add(obj->force, obj->position, obj->position);
-		//vec3f_clear(obj->force);
+		vec3f_add(obj->velocity, obj->position, obj->position);
+		vec3f_scale(obj->force, 1/obj->mass, obj->velocity);
+
+		obj->speed = vec3f_mag(obj->velocity);
 	}
 	printf("Done. %.0f\n", frame);
 
@@ -282,7 +324,7 @@ static void Game_SetCamera(int playerNum) {
 		}
 	}
 	vec3f_set(direction, dir);
-	vec3f_scale(dir, -3, dir);
+	vec3f_scale(dir, -2 * (obj->speed + 1), dir);
 	dir[1] = 1.3;
 
 	vec3f_set(obj->position, pos);
@@ -301,15 +343,16 @@ static void Game_SetCamera(int playerNum) {
 }
 
 static void Game_Draw_Sky() {
-	float amb = sin(frame/1000);
+	float amb = ambFunc;
 
 	gluQuadricOrientation(quad, GLU_INSIDE); 
 	gluQuadricTexture(quad, GL_TRUE);
 
-	/* Draw sky sphere */
-	glDisable(GL_BLEND);
 	if (amb < 0.0f) amb = 0.0f;
-	if (amb > 0.5f) amb = 0.5f;
+	if (amb > 0.5f) amb = 0.5f; 
+
+	/* Draw sky sphere */
+    glDisable(GL_BLEND);
 	glColor3f(0.1 + amb, 0.1 + amb, 0.1 + amb);
 	glBindTexture(GL_TEXTURE_2D, skyTexture);
 	glPushMatrix();
@@ -344,8 +387,10 @@ static void Game_Render_Scene(int playerNum) {
 	/* Position the camera behind tank (always) */
 	Game_SetCamera(playerNum);
 
-	glColor3d(0.6*sin(frame/1000), 0.8*sin(frame/1000), 0.5*sin(frame/1000));
+	/* Set ambient light */
+	glColor3d(0.6*ambFunc, 0.8*ambFunc, 0.5*ambFunc);
 	//glColor3d(0.6, 0.8, 0.5);
+
 	/* Render the scene from the camera */
 	Camera_Render(&playerList[playerNum].camera);
 
@@ -356,6 +401,25 @@ static void Game_Render_Scene(int playerNum) {
 	/* Replace this with WORLD_DRAW */ 
 	for (i = 0; i < numPlayers; i++) {
 		tank = &playerList[i].tank;
+
+		glBegin(GL_LINES);
+		glDisable(GL_BLEND);
+		glDisable(GL_CULL_FACE);
+	glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+	glEnable(GL_LINE_SMOOTH);
+		glColor3d(1,0,0);
+		{
+			float a[3], b[3];
+			vec3f_set(tank->obj.position, a);
+			vec3f_set(tank->obj.force, b);
+			vec3f_scale(b, 3, b);
+			vec3f_add(b, tank->obj.position, b);
+			a[1] += 2.3;
+			b[1] += 2.3;
+			glVertex3fv(a);
+			glVertex3fv(b);
+		}
+		glEnd();
 
 		glPushMatrix();
 		glTranslatef(tank->obj.position[0], tank->obj.position[1], tank->obj.position[2]);
@@ -381,15 +445,15 @@ static void Game_Render_Scene(int playerNum) {
 			glLightfv(GL_LIGHT0, GL_POSITION, pos);
 			glPopMatrix();
 
-			diff[0] = (float)light->directional[0] / 255.0;
-			diff[1] = (float)light->directional[1] / 255.0;
-			diff[2] = (float)light->directional[2] / 255.0;
+			diff[0] = (float)light->directional[0] / 255.0 + ambFunc;
+			diff[1] = (float)light->directional[1] / 255.0 + ambFunc;
+			diff[2] = (float)light->directional[2] / 255.0 + ambFunc;
 			glLightfv(GL_LIGHT0, GL_DIFFUSE, diff);
 			glLightfv(GL_LIGHT0, GL_SPECULAR, diff);
 
-			amb[0] = (float)light->ambient[0] / 255.0 + 0.4;
-			amb[1] = (float)light->ambient[1] / 255.0 + 0.4;
-			amb[2] = (float)light->ambient[2] / 255.0 + 0.4;
+			amb[0] = (float)light->ambient[0] / 255.0 + ambFunc;
+			amb[1] = (float)light->ambient[1] / 255.0 + ambFunc;
+			amb[2] = (float)light->ambient[2] / 255.0 + ambFunc;
 			glLightfv(GL_LIGHT0, GL_AMBIENT, amb);
 		}
 
