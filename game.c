@@ -4,6 +4,7 @@
 
 const int numPlayers = 2;
 const int totalLaps = 2;
+static int DEBUG = 0;
 static Player playerList[2];
 static float windowWidth;
 static float windowHeight;
@@ -134,7 +135,10 @@ void Game_Init() {
 
 	/* Setup player info */
 	for (i = 0; i < numPlayers; i++) {
-		Player_Init(i, Cowtank_Init);
+		if (i == 0) 
+			Player_Init(i, Spidertank_Init);
+		if (i == 1) 
+			Player_Init(i, Cowtank_Init);
 	}
 
 	/* Start the game */
@@ -160,10 +164,10 @@ static void Game_HandleKeys() {
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 
-	if (Keyboard_GetState('c', FALSE, TRUE)) {
+	if (Keyboard_GetState(KEY_F1, FALSE, TRUE)) {
 		Game_Start();
 	}
-	if (Keyboard_GetState('m', FALSE, TRUE)) {
+	if (Keyboard_GetState(KEY_F2, FALSE, TRUE)) {
 		if (glIsEnabled(GL_TEXTURE_2D)) {
 			glDisable(GL_TEXTURE_2D);
 		}
@@ -171,7 +175,12 @@ static void Game_HandleKeys() {
 			glEnable(GL_TEXTURE_2D);
 		}
 	}
-
+	if (Keyboard_GetState(KEY_F3, FALSE, TRUE)) {
+		DEBUG = !DEBUG;
+	}
+	if (Keyboard_GetState(KEY_F4, FALSE, TRUE)) {
+		frame = 0;
+	}
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -365,7 +374,10 @@ static void Game_RunPhysics() {
 				}
 
 				if (strstr(bsp->data.textures[cface->texture].name, "grass")) {
-					fric += 0.03;
+					fric *= 1.25;
+				}
+				if (strstr(bsp->data.textures[cface->texture].name, "oil1")) {
+					fric *= 0;
 				}
 
 #ifdef _PRINTDEBUG
@@ -389,10 +401,15 @@ static void Game_RunPhysics() {
 		}
 
 		if (fabs(obj->speed) > EPSILON) {
+			float mag;
+
 			/* Apply friction to left and right directions (relative to tank) */
 			vec3f_cross(obj->direction, obj->upAngles, tmp);
 			vec3f_norm(tmp);
-			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity) * 0.9, tmp);
+			mag = 0.2 * obj->mass / (4 * obj->speed);
+			if (fabs(mag) > 1.0f) mag = 1.0f;
+			if (fabs(mag) < 0.05f) mag = 1.0f;
+			vec3f_scale(tmp, vec3f_dot(tmp, obj->velocity) * mag, tmp);
 			vec3f_sub(tmp, ftot, ftot);
 
 			/* Apply friction opposite to driving direction */
@@ -412,7 +429,7 @@ static void Game_RunPhysics() {
 		vec3f_scale(obj->force, 1/obj->mass, obj->velocity);
 
 		if (obj->position[1] < -2.875) {
-		//	obj->position[1] = -2.87;
+			obj->position[1] = -2.87;
 		}
 
 		obj->speed = vec3f_mag(obj->velocity);
@@ -551,55 +568,55 @@ static void Game_Render_Scene(int playerNum) {
 	for (i = 0; i < numPlayers; i++) {
 		tank = &playerList[i].tank;
 
-#ifndef _PRINTDEBUG
-		glBegin(GL_LINES);
-		glDisable(GL_BLEND);
-		glDisable(GL_CULL_FACE);
-		glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-		glEnable(GL_LINE_SMOOTH);
-		glColor3d(1,0,0);
-		{
-			float a[3], b[3];
-			vec3f_set(tank->obj.position, a);
-			vec3f_set(tank->obj.force, b);
-			vec3f_scale(b, 5, b);
-			vec3f_add(b, tank->obj.position, b);
-			a[1] += tank->obj.height + 0.05;
-			b[1] += tank->obj.height + 0.05;
-			glVertex3fv(a);
-			glVertex3fv(b);
-		}
-		glEnd();
+		if (DEBUG) {
+			glBegin(GL_LINES);
+			glDisable(GL_BLEND);
+			glDisable(GL_CULL_FACE);
+			glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+			glEnable(GL_LINE_SMOOTH);
+			glColor3d(1,0,0);
+			{
+				float a[3], b[3];
+				vec3f_set(tank->obj.position, a);
+				vec3f_set(tank->obj.force, b);
+				vec3f_scale(b, 5, b);
+				vec3f_add(b, tank->obj.position, b);
+				a[1] += tank->obj.height + 0.05;
+				b[1] += tank->obj.height + 0.05;
+				glVertex3fv(a);
+				glVertex3fv(b);
+			}
+			glEnd();
 
-		glBegin(GL_LINES);
-		glColor3d(1,1,1);
-		glPointSize(2);
-		{
-			float hb[8][3];
-			int n;
-			Game_GenerateHitbox(&tank->obj, hb);
-			for (n = 0; n < 8; n++) 
-				glVertex3fv(hb[n]);
+			glBegin(GL_LINES);
+			glColor3d(1,1,1);
+			glPointSize(2);
+			{
+				float hb[8][3];
+				int n;
+				Game_GenerateHitbox(&tank->obj, hb);
+				for (n = 0; n < 8; n++) 
+					glVertex3fv(hb[n]);
 
-			glVertex3fv(hb[0]);
-			glVertex3fv(hb[2]);
-			glVertex3fv(hb[1]);
-			glVertex3fv(hb[3]);
-			glVertex3fv(hb[4]);
-			glVertex3fv(hb[6]);
-			glVertex3fv(hb[5]);
-			glVertex3fv(hb[7]);
-			glVertex3fv(hb[0]);
-			glVertex3fv(hb[4]);
-			glVertex3fv(hb[1]);
-			glVertex3fv(hb[5]);
-			glVertex3fv(hb[2]);
-			glVertex3fv(hb[6]);
-			glVertex3fv(hb[3]);
-			glVertex3fv(hb[7]);
+				glVertex3fv(hb[0]);
+				glVertex3fv(hb[2]);
+				glVertex3fv(hb[1]);
+				glVertex3fv(hb[3]);
+				glVertex3fv(hb[4]);
+				glVertex3fv(hb[6]);
+				glVertex3fv(hb[5]);
+				glVertex3fv(hb[7]);
+				glVertex3fv(hb[0]);
+				glVertex3fv(hb[4]);
+				glVertex3fv(hb[1]);
+				glVertex3fv(hb[5]);
+				glVertex3fv(hb[2]);
+				glVertex3fv(hb[6]);
+				glVertex3fv(hb[3]);
+				glVertex3fv(hb[7]);
+			}
+			glEnd();
 		}
-		glEnd();
-#endif
 
 		glPushMatrix();
 		glTranslatef(tank->obj.position[0], tank->obj.position[1], tank->obj.position[2]);
