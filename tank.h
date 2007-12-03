@@ -26,6 +26,7 @@ extern void Tank_Init(Tank *tank);
 extern void Cowtank_Init(Tank *tank);
 extern void Spidertank_Init(Tank *tank);
 extern void YTank_Init(Tank *tank);
+extern void NTank_Init(Tank *tank);
 
 #ifdef __CPLUSPLUS
 }
