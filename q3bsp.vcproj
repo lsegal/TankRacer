@@ -322,6 +322,14 @@
 						>
 					</File>
 				</Filter>
+				<Filter
+					Name="ntank"
+					>
+					<File
+						RelativePath=".\ntank.c"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 		<Filter

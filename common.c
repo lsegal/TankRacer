@@ -170,6 +170,22 @@ void text_output(int x, int y, char *fmt, ...) {
 	}
 }
 
+/* Outputs text on the screen, use glColor*() to set the colours prior to call */
+void text_output2(int x, int y, void *font, char *fmt, ...) {
+	char buf[1024];
+	int i = 0;
+
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, 1024, fmt, args);
+	va_end(args);
+
+	glRasterPos2f(x, y);
+	while (buf[i]) {
+		glutBitmapCharacter(font, buf[i++]);
+	}
+}
+
 /* Draws a cube centered around 0,0,0 with length/height/width of 
  * wx/wy/wz respectively, length being calculated on x, height being
  * calculated on y and width on z. This call also can map textures, unlike

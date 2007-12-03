@@ -70,8 +70,8 @@ extern int	  point_in_hitbox(float[3], float[8][3]);
 extern float *mat4f_mult(float[16], float[16], float[16]);
 
 extern void  text_output(int, int, char *, ...);
-
-extern void draw_cube(double, double, double);
+extern void  text_output2(int, int, void *, char *, ...);
+extern void  draw_cube(double, double, double);
 
 extern GLuint load_texture_jpeg(char *);
 extern GLuint load_texture_tga(char *);

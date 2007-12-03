@@ -14,6 +14,7 @@ static char mapName[128];
 static float gravity = 0.37338;
 typedef void (*TankInitProc)(Tank *, ...);
 static float ambFunc;
+static int paused = 0;
 
 static GLuint skyTexture;
 static GLuint cloudTexture;
@@ -105,6 +106,8 @@ static void Game_Start() {
 	}
 
 	Game_Resize(windowWidth, windowHeight);
+	
+	paused = 0;
 }
 
 void Game_Init() {
@@ -161,6 +164,11 @@ static void Game_HandleKeys() {
 	float z[] = {0,0,0}, tmp[3];
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
+	if (Keyboard_GetState('p', FALSE, TRUE)) {
+		paused = !paused;
+	}
+
+	if (paused) return;
 
 	if (Keyboard_GetState(KEY_F1, FALSE, TRUE)) {
 		Game_Start();
@@ -470,10 +478,13 @@ static void Game_Checkpoint() {
 
 void Game_Run() {
 	Game_HandleKeys();
-	Game_HandleDaylight();
-	Game_RunPhysics();
-	Game_Checkpoint();
-	frame++;
+
+	if (!paused) {
+		Game_HandleDaylight();
+		Game_RunPhysics();
+		Game_Checkpoint();
+		frame++;
+	}
 }
 
 static void Game_SetCamera(int playerNum) {
@@ -625,9 +636,9 @@ static void Game_Render_Scene(int playerNum) {
 			glEnable(GL_LIGHTING);
 			glEnable(GL_LIGHT0);
 
-			pos[0] = 2.4 * cosd((float)light->dir[1] * 360.0 / 255.0);
-			pos[1] = 2.4 * cosd((float)light->dir[0] * 360.0 / 255.0);
-			pos[2] = 2.4 * -sind((float)light->dir[1] * 360.0 / 255.0);
+			pos[0] = 20.4 * cosd((float)light->dir[1] * 360.0 / 255.0);
+			pos[1] = 20.4 * cosd((float)light->dir[0] * 360.0 / 255.0);
+			pos[2] = 20.4 * -sind((float)light->dir[1] * 360.0 / 255.0);
 			/*
 			sprintf(playerList[i].centerText, "angle(%.2f, %.2f) -> pos(%.2f, %.2f, %.2f)",
 				(float)light->dir[0] * 360.0 / 255.0, 
@@ -686,6 +697,23 @@ static void Game_Render_Overlay(int playerNum) {
 
 	glColor3d(0, 0, 0);
 	text_output(2, 50, playerList[playerNum].centerText);
+
+
+	if (paused) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_DST_ALPHA, GL_SRC_ALPHA);
+		glColor4f(0.2, 0.2, 0.2, 0.5);
+		glBegin(GL_QUADS);
+		glVertex2f(0, 0);
+		glVertex2f(100, 0);
+		glVertex2f(100, 100);
+		glVertex2f(0, 100);
+		glEnd();
+		glDisable(GL_BLEND);
+
+		glColor4f(1, 1, 1, 1);
+		text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED");
+	}
 }
 
 void Game_Render() {
