@@ -117,7 +117,7 @@ void Tank_Draw(Object *self, Tank *tank) {
 		glTranslated(0, 0.18, 0);
 
 		if (tank->tankBlur && fabs(self->speed) > 0.01) { /* Motion blur */
-			double s = fabs(self->speed / self->maxSpeed);
+			double s = fabs(self->speed / 0.3);
 
 			/* Load the tank body into a display list because it doesn't change */
 			tankBody = glGenLists(1);
@@ -126,7 +126,7 @@ void Tank_Draw(Object *self, Tank *tank) {
 			glEndList();
 
 			glAccum(GL_LOAD, 1);
-			for (i = 1; i <= s * 5; i++) {
+			for (i = 1; i <= s * 3; i++) {
 				double q = (s * i) / 100;
 				double t = (self->speed >= 0 ? -1 : 1) * q * 2;
 

@@ -1,6 +1,6 @@
 ; General game settings
 map tankracer
-gravity 0.1
+gravity 0.05
 
 ; Player 1 controls
 0 left		a

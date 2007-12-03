@@ -159,9 +159,9 @@ void Game_Resize(int w, int h) {
 }
 
 static void Game_HandleKeys() {
-	int i, driving = 0, d;
+	int i, driving = 0, turning = 0, d;
 	Object *obj;
-	float z[] = {0,0,0}, tmp[3];
+	float z[] = {0,0,0}, up[] = {0,1,0}, tmp[3];
 
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 	if (Keyboard_GetState('p', FALSE, TRUE)) {
@@ -192,6 +192,7 @@ static void Game_HandleKeys() {
 		obj = &playerList[i].tank.obj;
 
 		driving = 0;
+		turning = 0;
 
 		if (obj->onGround) {
 			if (Keyboard_GetState(playerList[i].forwardKey, TRUE, FALSE)) {
@@ -202,17 +203,19 @@ static void Game_HandleKeys() {
 			}
 			if (Keyboard_GetState(playerList[i].leftKey, TRUE, FALSE)) { /* turn left */
 				if (obj->speed != 0) {
+					turning = 1;
 					if (!driving) d = obj->speed >= 0 ? 1 : -1;
 					else d = driving;
-					vec3f_rotp(obj->direction, z, obj->upAngles, 
+					vec3f_rotp(obj->direction, z, up, 
 						pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * d, obj->direction);
 				}
 			}
 			if (Keyboard_GetState(playerList[i].rightKey, TRUE, FALSE)) { /* turn right */
 				if (obj->speed != 0) {
+					turning = 1;
 					if (!driving) d = obj->speed >= 0 ? 1 : -1;
 					else d = driving;
-					vec3f_rotp(obj->direction, z, obj->upAngles, 
+					vec3f_rotp(obj->direction, z, up, 
 						-pow(playerList[i].tank.turnAbility * (obj->speed - obj->maxSpeed/2), 2) * d, obj->direction);
 				}
 			}
@@ -228,6 +231,7 @@ static void Game_HandleKeys() {
 				vec3f_scale(tmp, obj->maxAccel * driving, tmp);
 				vec3f_add(obj->force, tmp, obj->force);
 			}
+			playerList[i].tank.tankBlur = turning;
 		}
 	}
 }
@@ -321,6 +325,7 @@ static void Game_RunPhysics() {
 	Object *obj, *obj2;
 	face *cface;
 	float angle, fric;
+	float mag, dist;
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -345,21 +350,19 @@ static void Game_RunPhysics() {
 		vec3f_add(ftot, grav, ftot);
 
 		vec3f_set(ftot, dir);
-		vec3f_norm(dir);
-		vec3f_scale(dir, 20 * EPSILON, dir);
 
 		/* Get direction vector */
 		obj->onGround = 0;
 		Game_GenerateHitbox(obj, hitbox);
 		for (x = 0; x < 8; x++) {
 			vec3f_clear(hitboxadjust);
-			vec3f_scale(obj->direction, -10 * EPSILON, tmp);
+			vec3f_scale(obj->direction, -obj->length, tmp);
 			vec3f_add(hitboxadjust, tmp, hitboxadjust);
-			vec3f_scale(obj->upAngles, 10 * EPSILON, tmp);
+			vec3f_scale(obj->upAngles, obj->height, tmp);
 			vec3f_add(hitboxadjust, tmp, hitboxadjust);
 
 			if (x >= 4) { /* Only use direction for top 4 points */
-				vec3f_scale(obj->force, 20 * EPSILON, tmp);
+				vec3f_set(obj->force, tmp);
 				cface = bsp_face_collision(bsp, hitbox[x], tmp, FALSE);
 			}
 			else if (x < 4) {
@@ -377,6 +380,7 @@ static void Game_RunPhysics() {
 				}
 				else if (angle >= PI/8) {
 					cnormal[1] = 0;
+					vec3f_scale(cnormal, 1.3, cnormal); /* Walls are strong to not let player through */
 				}
 
 				if (strstr(bsp->data.textures[cface->texture].name, "grass")) {
@@ -386,9 +390,10 @@ static void Game_RunPhysics() {
 					fric *= 0;
 				}
 
-#ifdef _PRINTDEBUG
-				printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
-#endif
+				if (DEBUG) {
+					printf("Player %d collided with '%s'\n", i, bsp->data.textures[cface->texture].name);
+				}
+
 				vec3f_scale(cnormal, vec3f_dot(cnormal, ftot), tmp);
 				vec3f_sub(tmp, ftot, ftot);
 			}
@@ -407,8 +412,6 @@ static void Game_RunPhysics() {
 		}
 
 		if (fabs(obj->speed) > EPSILON) {
-			float mag;
-
 			/* Apply friction to left and right directions (relative to tank) */
 			vec3f_cross(obj->direction, obj->upAngles, tmp);
 			vec3f_norm(tmp);
@@ -427,6 +430,16 @@ static void Game_RunPhysics() {
 		
 		if (fabs(vec3f_mag(ftot)) < EPSILON) {
 			vec3f_clear(ftot);
+		}
+		if (cface = bsp_face_collision(bsp, obj->position, ftot, FALSE)) {
+			/* This total force has gone too far */
+			dist = vec3f_planedist(obj->position, ftot, cface->normal, bsp->data.vertexes[cface->vertex].position);
+			
+			vec3f_scale(cface->normal, vec3f_dot(cface->normal, ftot), tmp);
+			vec3f_sub(tmp, ftot, ftot);
+//			vec3f_norm(ftot);
+//			vec3f_scale(ftot, dist * 0.9, ftot);
+			obj->onGround = TRUE;
 		}
 
 		vec3f_set(ftot, obj->force);
@@ -483,6 +496,9 @@ void Game_Run() {
 		Game_HandleDaylight();
 		Game_RunPhysics();
 		Game_Checkpoint();
+
+		if (DEBUG) printf("Finished frame %.0f\n", frame);
+
 		frame++;
 	}
 }

@@ -136,6 +136,13 @@ int point_in_hitbox(float p[3], float hitbox[8][3]) {
 	return 1;
 }
 
+/* Distance from a point to a plane in a specific vector direction */
+float vec3f_planedist(float point[3], float dir[3], float plane[3], float planepoint[3]) {
+	float tmp[3];
+	vec3f_sub(planepoint, point, tmp);
+	return -vec3f_dot(plane, tmp) / vec3f_dot(plane, dir);
+}
+
 /* Multiplies a 4x4 matrix by another */
 float *mat4f_mult(float m1[16], float m2[16], float out[16]) {
     int i, j, k;

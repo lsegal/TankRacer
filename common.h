@@ -62,6 +62,7 @@ extern float *vec3f_norm(float[3]);
 extern float *vec3f_add(float[3], float[3], float[3]);
 extern float *vec3f_sub(float[3], float[3], float[3]);
 extern float  vec3f_dist(float[3], float[3]);
+extern float  vec3f_planedist(float[3], float[3], float[3], float[3]);
 extern float  vec3f_classify(float[3], float[3], float);
 extern float *vec3f_rotp(float[3], float[3], float[3], float, float[3]);
 

@@ -529,10 +529,9 @@ face *bsp_face_collision(bspfile *bsp, float p1[3], float zdir[3], int check) {
 
 			if (cface->type != 1) continue; /* Face is a patch or billboard, no collision implemented for these */
 
-			vec3f_sub(bsp->data.vertexes[cface->vertex].position, p1, tmp);
-			dist = -vec3f_dot(cface->normal, tmp) / vec3f_dot(cface->normal, dir);
+			dist = vec3f_planedist(p1, dir, cface->normal, bsp->data.vertexes[cface->vertex].position);
 
-			if (fabs(dist) > 0.3f) continue; /* Too far to be a collision */
+			if (fabs(dist) > vec3f_mag(zdir)) continue; /* Too far to be a collision */
 			if (vec3f_dot(cface->normal, dir) >= 0) continue; /* Face is back facing */
 
 			vec3f_scale(dir, dist, tmp);
