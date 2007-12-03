@@ -314,6 +314,14 @@
 						>
 					</File>
 				</Filter>
+				<Filter
+					Name="ytank"
+					>
+					<File
+						RelativePath=".\ytank.c"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 		<Filter
