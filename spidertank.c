@@ -37,9 +37,14 @@ void Spidertank_Init(Tank *self) {
 	loaded_textures = TRUE;
 
 	/* Initialize basic object constants */
+	self->obj.mass *= 0.8;
 	self->obj.width = 1;
 	self->obj.height = 1.2;
 	self->obj.length = 2;
+
+	/* Turns slower but is faster */
+	self->turnAbility *= 0.7;
+	self->obj.maxAccel *= 1.05;
 }
 
 /********************************************************************************/
@@ -468,12 +473,12 @@ void drawTank(Object *self, Tank *tank)
 {
 	glDisable(GL_CULL_FACE);
 	glPushMatrix();
-	glTranslated(0, 0.2, 0);
+	glTranslated(0, 0.3, 0);
 	glRotatef(-90, 0, 1, 0);
 	glScalef(0.4,0.4,0.4);
 	glPushMatrix();
 
-	glScalef(1.0, .5 ,2.5);
+	glScalef(1.0, 0.5, 2.5);
 	drawTexCube(1);
 	glPopMatrix();
 
