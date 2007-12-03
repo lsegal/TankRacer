@@ -1,6 +1,10 @@
 #ifndef HAVE_CAMERA_H
 #define HAVE_CAMERA_H
 
+#ifdef __CPLUSPLUS
+extern "C" {
+#endif
+
 #include "bsp.h"
 
 typedef struct Camera {
@@ -25,5 +29,9 @@ void Camera_SetPosition(Camera *, float[3], float[3]);
 void Camera_Move(Camera *, float[3]);
 void Camera_MoveInDirection(Camera *, float);
 void Camera_Render(Camera *);
+
+#ifdef __CPLUSPLUS
+}
+#endif
 
 #endif /* HAVE_CAMERA_H */

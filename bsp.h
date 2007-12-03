@@ -1,6 +1,10 @@
 #ifndef HAVE_BSP_H
 #define HAVE_BSP_H
 
+#ifdef __CPLUSPLUS
+extern "C" {
+#endif
+
 #define BSP_SCALE 64
 
 const enum direntrynames {
@@ -219,5 +223,9 @@ extern int	 	 bsp_leaf_visible(bspfile *, leaf *, leaf *);
 extern plane    *bsp_simple_collision(bspfile *, float[3], float[3], leaf *, leaf *);
 extern face	    *bsp_face_collision(bspfile *, float[3], float[3], int);
 extern lightvol *bsp_lightvol(bspfile *, float[3]);
+
+#ifdef __CPLUSPLUS
+}
+#endif
 
 #endif /* HAVE_BSP_H */

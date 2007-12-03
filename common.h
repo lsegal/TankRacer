@@ -1,3 +1,7 @@
+#ifdef __CPLUSPLUS
+extern "C" {
+#endif
+
 #ifdef WIN32
 #	include <windows.h>
 #else
@@ -72,3 +76,7 @@ extern void draw_cube(double, double, double);
 extern GLuint load_texture_jpeg(char *);
 extern GLuint load_texture_tga(char *);
 extern GLuint load_texture_raw(const char *, int, int, int);
+
+#ifdef __CPLUSPLUS
+}
+#endif

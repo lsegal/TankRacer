@@ -1,6 +1,10 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#ifdef __CPLUSPLUS
+extern "C" {
+#endif
+
 typedef void (ObjectCallbackFunc)(void*,void*);
 
 typedef struct Object {
@@ -25,5 +29,9 @@ typedef struct Object {
 	ObjectCallbackFunc *drawFunc;		/* Draw function called by world */
 	void *funcData;						/* Object specific data passed to callback functions */
 } Object;
+
+#ifdef __CPLUSPLUS
+}
+#endif
 
 #endif /* OBJECT_H */
