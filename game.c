@@ -17,7 +17,6 @@ static float ambFunc;
 
 static GLuint skyTexture;
 static GLuint cloudTexture;
-static GLuint fogTexture;
 static GLUquadricObj *quad;
 
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
@@ -122,7 +121,6 @@ void Game_Init() {
 	/* Load sky texture */
 	skyTexture = load_texture_jpeg("textures/sky1.jpg");
 	cloudTexture = load_texture_jpeg("textures/sky2.jpg");
-	fogTexture = load_texture_jpeg("textures/clouds.jpg");
 	quad = gluNewQuadric();
 	ambFunc = 0.0f;
 
