@@ -12,6 +12,13 @@ void Tank_Init(Tank *self) {
 
 	/* Looking up */
 	self->obj.upAngles[1] = 1;
+
+	/* Basic constants */
+	self->obj.mass = 1;
+	self->obj.maxAccel = 0.03;
+	self->obj.maxSpeed = 5;
+	self->turnAbility = 1;
+	self->tankBlur = FALSE;
 }
 
 /* Callback from the world to do any per-frame calculations for the tank */

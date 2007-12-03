@@ -76,14 +76,9 @@ void Cowtank_Init(Tank *self) {
 	}
 
 	/* Initialize basic object constants */
-	self->obj.mass = 1;
-	self->obj.maxAccel = 0.03;
-	self->obj.maxSpeed = 5;
 	self->obj.width = 1.2;
 	self->obj.height = 1.2;
 	self->obj.length = 2;
-	self->turnAbility = 1;
-	self->tankBlur = FALSE;
 }
 
 /*--------------------------------------------------
