@@ -2,8 +2,8 @@
 #include "game.h"
 #include "bsp.h"
 
-const int numPlayers = 2;
-const int totalLaps = 2;
+static int numPlayers = 2;
+static int totalLaps = 3;
 static int DEBUG = 0;
 static Player playerList[2];
 static float windowWidth;
@@ -22,6 +22,20 @@ static GLuint skyTexture;
 static GLuint cloudTexture;
 static GLuint dirtTexture;
 static GLUquadricObj *quad;
+
+static float time_now; 
+static int game_end = 0;
+static int game_started;
+static float game_start_time;
+static float time_since_start;
+static int down_count;
+static int count_finished;
+
+const enum TankTypes {
+	TANK_COWTANK,
+	TANK_SPIDERTANK,
+	TANK_NTANK
+};
 
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 	Camera_Init(&playerList[playerNum].camera, bsp);	/* Initialize the camera */
@@ -45,6 +59,12 @@ static void Game_Read_Config() {
 		if (sscanf(line, "%d %s %s", &pnum, actionName, keyName) > 0) {
 			/* This key value is for player `pnum` */
 			if (pnum >= 0 && pnum < numPlayers) {
+				/* Tank type */
+				if (!strcmp(actionName, "tank")) {
+					playerList[pnum].tankType = atoi(keyName);
+					continue;
+				}
+
 				/* Key names */
 				if (keyName[1] == 0) {
 					keyVal = keyName[0];
@@ -91,6 +111,12 @@ static void Game_Read_Config() {
 					mouse = TRUE;
 				}
 			}
+			if (!strcmp(key, "maxplayers")) {
+				numPlayers = atoi(val);
+			}
+			if (!strcmp(key, "maxlaps")) {
+				totalLaps = atoi(val);
+			}
 		}
 	}
 
@@ -121,7 +147,12 @@ static void Game_Start() {
 
 	Game_Resize(windowWidth, windowHeight);
 	
+	//these parameters help to initialize the timer.
+	game_started = 1; //add one more parameter here to signal the timer.
+	game_start_time = glutGet(GLUT_ELAPSED_TIME)/1000.00;
+	count_finished = 0;
 	paused = 0;
+	game_end = 0;
 }
 
 void Game_Init() {
@@ -151,10 +182,15 @@ void Game_Init() {
 
 	/* Setup player info */
 	for (i = 0; i < numPlayers; i++) {
-		if (i == 0) 
-			Player_Init(i, Spidertank_Init);
-		if (i == 1) 
-			Player_Init(i, Cowtank_Init);
+		TankInitProc tproc = NULL;
+
+		switch (playerList[i].tankType) {
+			case TANK_COWTANK:    tproc = Cowtank_Init; break;
+			case TANK_SPIDERTANK: tproc = Spidertank_Init; break;
+			case TANK_NTANK:	  tproc = NTank_Init; break;
+		}
+
+		Player_Init(i, tproc);
 	}
 
 	/* Start the game */
@@ -182,12 +218,12 @@ static void Game_HandleKeys() {
 	if (Keyboard_GetState('p', FALSE, TRUE)) {
 		paused = !paused;
 	}
-
-	if (paused) return;
-
 	if (Keyboard_GetState(KEY_F1, FALSE, TRUE)) {
 		Game_Start();
 	}
+
+	if (paused || game_end || down_count > 0) return;
+
 	if (Keyboard_GetState(KEY_F2, FALSE, TRUE)) {
 		if (glIsEnabled(GL_TEXTURE_2D)) {
 			glDisable(GL_TEXTURE_2D);
@@ -204,6 +240,9 @@ static void Game_HandleKeys() {
 	}
 	if (Keyboard_GetState(KEY_F5, FALSE, TRUE)) {
 		allowBlur = !allowBlur;
+	}
+	if (Keyboard_GetState(KEY_F6, FALSE, TRUE)) {
+		mouse = !mouse;
 	}
 
 	for (i = 0; i < numPlayers; i++) {
@@ -352,6 +391,15 @@ static void Game_RunPhysics() {
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
+
+		if (mouse) { /* Noclip mode */
+			vec3f_set(obj->force, tmp);
+			vec3f_norm(tmp);
+			vec3f_scale(tmp, 0.5, tmp);
+			vec3f_add(tmp, obj->position, obj->position);
+			vec3f_clear(obj->force);
+			continue;
+		}
 
 		vec3f_clear(up);
 
@@ -505,6 +553,9 @@ static void Game_Checkpoint() {
 				if (newCheckpoint == 'S' && playerList[i].checkpoint == '2') {
 					playerList[i].lapNumber++;
 					playerList[i].checkpoint = 'S';
+					if (playerList[i].lapNumber >= totalLaps) {
+						game_end = 1;
+					}
 				}
 				else if ((newCheckpoint == '1' && playerList[i].checkpoint == 'S') ||
 						(newCheckpoint > playerList[i].checkpoint)) {
@@ -748,15 +799,16 @@ static void Game_Render_Overlay(int playerNum) {
 
 	glColor3d(1, 0, 0);
 	text_output(2, 92, "Player %d", playerNum+1);
+	if (!game_end) {
+		text_output(2, 2, "Lap number: %d %s", playerList[playerNum].lapNumber + 1,
+			playerList[playerNum].lapNumber + 1 == totalLaps ? "(FINAL LAP!)" : "");
+	}
 
-	text_output(2, 2, "Coordinates: %.2f, %.2f, %.2f - Lap number: %d", 
-		camera->position[0], camera->position[1], camera->position[2], playerList[playerNum].lapNumber + 1);
-
-	glColor3d(0, 0, 0);
+	glColor3d(0, 1, 0);
 	text_output(2, 50, playerList[playerNum].centerText);
 
 
-	if (paused) {
+	if (paused || game_end) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_DST_ALPHA, GL_SRC_ALPHA);
 		glColor4f(0.2, 0.2, 0.2, 0.5);
@@ -769,7 +821,50 @@ static void Game_Render_Overlay(int playerNum) {
 		glDisable(GL_BLEND);
 
 		glColor4f(1, 1, 1, 1);
-		text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED");
+
+		if (!game_end) {
+			text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED");
+		}
+		else {
+			char *msg;
+			if (playerList[playerNum].lapNumber + 1 < totalLaps) {
+				msg = "YOU LOSE";
+			}
+			else {
+				msg = "YOU WIN";
+			}
+			text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, msg);
+		}
+	}
+}
+
+static void Game_Render_Full_Overlay() {
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0, 100, 0, 100);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	glColor3f(1, 0, 1);
+	if ((game_started == 1) && (count_finished == 0)) {
+		if (!paused && !game_end) {
+			time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00;
+		}
+		time_since_start = time_now - game_start_time;
+		down_count = 5-(int)time_since_start;
+		if (down_count > 0){
+			text_output(45, 90, "%d", down_count);	
+		}
+		if (down_count == 0){
+			text_output(45, 90, "GO!!!");
+		}
+		if (down_count < 0){
+			if (!paused){
+				time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00 - 6;
+			}
+			time_since_start = time_now - game_start_time;	
+			text_output(78, 92, "Time Elapsed: %.2f", time_since_start);
+		}
 	}
 }
 
@@ -780,4 +875,5 @@ void Game_Render() {
 		Game_Render_Scene(i);		/* Draw the scene (map) */
 		Game_Render_Overlay(i);		/* Draw the overlay for the player */
 	}
+	Game_Render_Full_Overlay();
 }

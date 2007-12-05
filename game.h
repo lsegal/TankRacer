@@ -11,6 +11,7 @@ typedef struct Player {
 	int		playerNum;
 	Camera	camera;
 	Tank	tank;
+	int		tankType;
 
 	int		forwardKey;
 	int		backKey;

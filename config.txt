@@ -2,6 +2,10 @@
 map tankracer
 gravity 0.05
 
+; Tanks
+0 tank 1
+1 tank 0
+
 ; Player 1 controls
 0 left		a
 0 right		d
@@ -13,3 +17,7 @@ gravity 0.05
 1 right		right
 1 forward	up
 1 back		down
+
+; Game settings
+maxplayers 2
+maxlaps    3
