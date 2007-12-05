@@ -200,6 +200,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\pengine.h"
+				>
+			</File>
+			<File
 				RelativePath=".\tank.h"
 				>
 			</File>
@@ -362,6 +366,10 @@
 		</File>
 		<File
 			RelativePath=".\main.c"
+			>
+		</File>
+		<File
+			RelativePath=".\pengine.c"
 			>
 		</File>
 	</Files>

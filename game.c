@@ -15,9 +15,12 @@ static float gravity = 0.37338;
 typedef void (*TankInitProc)(Tank *, ...);
 static float ambFunc;
 static int paused = 0;
+static int mouse = 0;
+static int allowBlur = 0;
 
 static GLuint skyTexture;
 static GLuint cloudTexture;
+static GLuint dirtTexture;
 static GLUquadricObj *quad;
 
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
@@ -26,6 +29,8 @@ static void Player_Init(int playerNum, TankInitProc tankInitProc) {
 
 	playerList[playerNum].numLast = 10;
 	memset(playerList[playerNum].lastDir, 0, sizeof(float[3]) * playerList[playerNum].numLast);
+	
+	playerList[playerNum].pengine = NULL;
 }
 
 static void Game_Read_Config() {
@@ -81,6 +86,11 @@ static void Game_Read_Config() {
 			if (!strcmp(key, "gravity")) {
 				gravity = atof(val);
 			}
+			if (!strcmp(key, "noclip")) {
+				if (atoi(val) != 0) {
+					mouse = TRUE;
+				}
+			}
 		}
 	}
 
@@ -88,6 +98,7 @@ static void Game_Read_Config() {
 }
 
 static void Game_Start() {
+	float grav[3] = { 0, -gravity * 0.05, 0 };
 	int playerNum;
 
 	for (playerNum = 0; playerNum < numPlayers; playerNum++) {
@@ -103,6 +114,9 @@ static void Game_Start() {
 
 		playerList[playerNum].checkpoint = 'S';
 		playerList[playerNum].lapNumber = 0;
+
+		ParticleEngine_Free(playerList[playerNum].pengine);
+		playerList[playerNum].pengine = ParticleEngine_Init(100, 10, 5, -2.87, dirtTexture, NULL, NULL, grav);
 	}
 
 	Game_Resize(windowWidth, windowHeight);
@@ -124,6 +138,7 @@ void Game_Init() {
 	/* Load sky texture */
 	skyTexture = load_texture_jpeg("textures/sky1.jpg");
 	cloudTexture = load_texture_jpeg("textures/sky2.jpg");
+	dirtTexture = load_texture_jpeg("textures/dirtspeck.jpg");
 	quad = gluNewQuadric();
 	ambFunc = 0.0f;
 
@@ -187,6 +202,9 @@ static void Game_HandleKeys() {
 	if (Keyboard_GetState(KEY_F4, FALSE, TRUE)) {
 		frame = 0;
 	}
+	if (Keyboard_GetState(KEY_F5, FALSE, TRUE)) {
+		allowBlur = !allowBlur;
+	}
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
@@ -231,7 +249,12 @@ static void Game_HandleKeys() {
 				vec3f_scale(tmp, obj->maxAccel * driving, tmp);
 				vec3f_add(obj->force, tmp, obj->force);
 			}
-			playerList[i].tank.tankBlur = turning;
+			if (allowBlur) {
+				playerList[i].tank.tankBlur = turning;
+			}
+			else {
+				playerList[i].tank.tankBlur = 0;
+			}
 		}
 	}
 }
@@ -329,6 +352,8 @@ static void Game_RunPhysics() {
 
 	for (i = 0; i < numPlayers; i++) {
 		obj = &playerList[i].tank.obj;
+
+		vec3f_clear(up);
 
 		fric = 0.05; /* World friction */
 
@@ -479,6 +504,7 @@ static void Game_Checkpoint() {
 
 				if (newCheckpoint == 'S' && playerList[i].checkpoint == '2') {
 					playerList[i].lapNumber++;
+					playerList[i].checkpoint = 'S';
 				}
 				else if ((newCheckpoint == '1' && playerList[i].checkpoint == 'S') ||
 						(newCheckpoint > playerList[i].checkpoint)) {
@@ -487,6 +513,17 @@ static void Game_Checkpoint() {
 			}
 		}
 	}
+}
+
+static void Game_HandleParticleEngine() {
+	int i;
+	for (i = 0; i < numPlayers; i++) {
+		vec3f_set(playerList[i].tank.obj.position, playerList[i].pengine->startPosition);
+		vec3f_scale(playerList[i].tank.obj.force, -0.05, playerList[i].pengine->startForce);
+		playerList[i].pengine->startForce[1] += 0.05;
+		ParticleEngine_Run(playerList[i].pengine);
+	}
+
 }
 
 void Game_Run() {
@@ -693,11 +730,15 @@ static void Game_Render_Scene(int playerNum) {
 			glDisable(GL_LIGHT0);
 		}
 	}
+//	Game_HandleParticleEngine();
 }
 
 static void Game_Render_Overlay(int playerNum) {
 	Camera *camera = &playerList[playerNum].camera;
 	Object *obj = &playerList[playerNum].tank.obj;
+
+	glDisable(GL_LIGHT0);
+	glDisable(GL_LIGHTING);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();

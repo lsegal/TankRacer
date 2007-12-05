@@ -5,6 +5,7 @@ extern "C" {
 #include "tank.h"
 #include "camera.h"
 #include "keyboard.h"
+#include "pengine.h"
 
 typedef struct Player {
 	int		playerNum;
@@ -24,6 +25,8 @@ typedef struct Player {
 
 	int		lapNumber;
 	int		checkpoint;
+
+	ParticleEngine *pengine;
 } Player;
 
 extern void Game_Init();
