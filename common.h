@@ -78,6 +78,8 @@ extern GLuint load_texture_jpeg(char *);
 extern GLuint load_texture_tga(char *);
 extern GLuint load_texture_raw(const char *, int, int, int);
 
+extern void Menu_Init();
+
 #ifdef __CPLUSPLUS
 }
 #endif

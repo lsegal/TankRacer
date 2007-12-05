@@ -31,6 +31,9 @@ static float time_since_start;
 static int down_count;
 static int count_finished;
 
+static void Game_Render();
+static void Game_Run();
+
 const enum TankTypes {
 	TANK_COWTANK,
 	TANK_SPIDERTANK,
@@ -141,8 +144,8 @@ static void Game_Start() {
 		playerList[playerNum].checkpoint = 'S';
 		playerList[playerNum].lapNumber = 0;
 
-		ParticleEngine_Free(playerList[playerNum].pengine);
-		playerList[playerNum].pengine = ParticleEngine_Init(100, 10, 5, -2.87, dirtTexture, NULL, NULL, grav);
+	//	ParticleEngine_Free(playerList[playerNum].pengine);
+	//	playerList[playerNum].pengine = ParticleEngine_Init(100, 10, 5, -2.87, dirtTexture, NULL, NULL, grav);
 	}
 
 	Game_Resize(windowWidth, windowHeight);
@@ -155,10 +158,38 @@ static void Game_Start() {
 	game_end = 0;
 }
 
+static void resize(int w, int h) {
+	Game_Resize(w, h);
+}
+
+static void run(void) {
+	Game_Run();
+	glutPostRedisplay();
+}
+
+static void render(void) {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	Game_Render();
+	glutSwapBuffers();
+}
+
 void Game_Init() {
 	int i;
 
 	memset(playerList, 0, sizeof(playerList));
+
+	glutIdleFunc(run);
+	glutDisplayFunc(render);
+	glutReshapeFunc(resize);
+
+	/* Texture settings for lightmap modulation */
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_EXT);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB_EXT, GL_PREVIOUS_EXT);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB_EXT, GL_SRC_COLOR);
+	glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB_EXT, GL_MODULATE);
+	glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB_EXT, GL_TEXTURE);
+	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB_EXT, GL_SRC_COLOR);
+	glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_EXT, 2.0f);
 
 	/* Load the keyboard */
 	Keyboard_Init();
@@ -169,7 +200,7 @@ void Game_Init() {
 	/* Load sky texture */
 	skyTexture = load_texture_jpeg("textures/sky1.jpg");
 	cloudTexture = load_texture_jpeg("textures/sky2.jpg");
-	dirtTexture = load_texture_jpeg("textures/dirtspeck.jpg");
+	//dirtTexture = load_texture_jpeg("textures/dirtspeck.jpg");
 	quad = gluNewQuadric();
 	ambFunc = 0.0f;
 
@@ -846,7 +877,7 @@ static void Game_Render_Full_Overlay() {
 	glLoadIdentity();
 
 	glColor3f(1, 0, 1);
-	if ((game_started == 1) && (count_finished == 0)) {
+	if ((game_started == 1) && (count_finished == 0) && !game_end) {
 		if (!paused && !game_end) {
 			time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00;
 		}

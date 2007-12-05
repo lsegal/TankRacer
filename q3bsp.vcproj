@@ -369,6 +369,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\menu.c"
+			>
+		</File>
+		<File
 			RelativePath=".\pengine.c"
 			>
 		</File>
