@@ -860,7 +860,6 @@ static void Game_Render_Scene(int playerNum) {
 			glDisable(GL_LIGHT0);
 		}
 	}
-//	Game_HandleParticleEngine();
 }
 
 static void Game_Render_Overlay(int playerNum) {
@@ -882,10 +881,9 @@ static void Game_Render_Overlay(int playerNum) {
 		text_output(2, 2, "Lap number: %d %s", playerList[playerNum].lapNumber + 1,
 			playerList[playerNum].lapNumber + 1 == totalLaps ? "(FINAL LAP!)" : "");
 	}
-
-	if (game_end){
+	else {
 		handle_end_of_game(playerNum);
-		}
+	}
 
 	glColor3d(0, 1, 0);
 	text_output(2, 50, playerList[playerNum].centerText);
