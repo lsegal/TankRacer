@@ -135,7 +135,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="glut32.lib glu32.lib opengl32.lib libjpeg.lib"
+				AdditionalDependencies="glut32.lib glu32.lib opengl32.lib libjpeg/libjpeg.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
