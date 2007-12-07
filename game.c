@@ -440,10 +440,10 @@ static int Game_PlayerCollision(Object *obj1, Object *obj2) {
 
 			/* Find out how much force can be applied to obj2 */
 			addmag = vec3f_dot(tmp, hittee->direction);
-			vec3f_scale(hittee->direction, addmag * dist, addf);
+			vec3f_scale(hittee->direction, addmag * dist / 5, addf);
 
 			/* Remaining force is added to obj1 */
-			vec3f_scale(hitter->direction, -(1-fabs(addmag)) * dist, remf);
+			vec3f_scale(hitter->direction, -(1-fabs(addmag)) * dist / 5, remf);
 
 			/* Add forces */
 			//vec3f_sub(remf, hitter->force, hitter->force); /* Don't add anything to hitter */
