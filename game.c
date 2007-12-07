@@ -40,6 +40,9 @@ static int count_finished;
 static float game_count_down; //the "time left" shown on screen
 const float time_limit = 240;//max allowed time for the game
 
+static void Game_Run();
+static void Game_Render();
+
 const enum TankTypes {
 	TANK_COWTANK,
 	TANK_SPIDERTANK,
