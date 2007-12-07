@@ -254,7 +254,7 @@ void Game_Resize(int w, int h) {
 	}
 }
 
-static void handle_end_of_game(int i){
+static void handle_end_of_game(int i) {
 	char *msg;
 	int playerNum = i;
 	if (playerList[playerNum].lapNumber + 1 < totalLaps) {
