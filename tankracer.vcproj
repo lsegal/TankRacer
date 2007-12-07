@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="q3bsp"
+	Name="tankracer"
 	ProjectGUID="{13BF2AE2-31BF-46B8-85AD-A4C9E4E94456}"
-	RootNamespace="q3bsp"
+	RootNamespace="tankracer"
 	Keyword="Win32Proj"
 	>
 	<Platforms>
