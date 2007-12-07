@@ -14,7 +14,14 @@ static char mapName[128];
 static float gravity = 0.37338;
 typedef void (*TankInitProc)(Tank *, ...);
 static float ambFunc;
+
 static int paused = 0;
+static int pause_start = 0;//for the pause timer
+static float pause_start_time=0;
+static float pause_end_time=0;
+static float pause_duration = 0;
+static float total_paused_time = 0; 
+
 static int mouse = 0;
 static int allowBlur = 0;
 
@@ -30,14 +37,15 @@ static float game_start_time;
 static float time_since_start;
 static int down_count;
 static int count_finished;
-
-static void Game_Render();
-static void Game_Run();
+static float game_count_down; //the "time left" shown on screen
+const float time_limit = 240;//max allowed time for the game
 
 const enum TankTypes {
 	TANK_COWTANK,
 	TANK_SPIDERTANK,
-	TANK_NTANK
+	TANK_NTANK,
+	TANK_YTANK
+	
 };
 
 static void Player_Init(int playerNum, TankInitProc tankInitProc) {
@@ -144,8 +152,8 @@ static void Game_Start() {
 		playerList[playerNum].checkpoint = 'S';
 		playerList[playerNum].lapNumber = 0;
 
-	//	ParticleEngine_Free(playerList[playerNum].pengine);
-	//	playerList[playerNum].pengine = ParticleEngine_Init(100, 10, 5, -2.87, dirtTexture, NULL, NULL, grav);
+		//ParticleEngine_Free(playerList[playerNum].pengine);
+		//playerList[playerNum].pengine = ParticleEngine_Init(100, 10, 5, -2.87, dirtTexture, NULL, NULL, grav);
 	}
 
 	Game_Resize(windowWidth, windowHeight);
@@ -191,6 +199,7 @@ void Game_Init() {
 	glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB_EXT, GL_SRC_COLOR);
 	glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_EXT, 2.0f);
 
+
 	/* Load the keyboard */
 	Keyboard_Init();
 
@@ -216,9 +225,11 @@ void Game_Init() {
 		TankInitProc tproc = NULL;
 
 		switch (playerList[i].tankType) {
-			case TANK_COWTANK:    tproc = Cowtank_Init; break;
+			case TANK_COWTANK:    tproc = Cowtank_Init; break;	
 			case TANK_SPIDERTANK: tproc = Spidertank_Init; break;
 			case TANK_NTANK:	  tproc = NTank_Init; break;
+			case TANK_YTANK:	  tproc = YTank_Init; break;
+			
 		}
 
 		Player_Init(i, tproc);
@@ -240,6 +251,29 @@ void Game_Resize(int w, int h) {
 	}
 }
 
+static void handle_end_of_game(int i){
+	char *msg;
+	int playerNum = i;
+	if (playerList[playerNum].lapNumber + 1 < totalLaps) {
+			msg = "YOU LOSE";
+		}
+		else {
+			msg = "YOU WIN";
+		}
+		text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, msg);
+
+		if (game_count_down>0){
+			text_output(78, 92, "Time Left: %.2f", game_count_down);
+		}
+		else {
+			text_output(78, 92, "Time Left: 0.00");
+		}
+			text_output(45, 92, "GAME OVER");
+			text_output(40, 42, "Press F1 to restart.");
+		return;
+
+
+}
 static void Game_HandleKeys() {
 	int i, driving = 0, turning = 0, d;
 	Object *obj;
@@ -248,12 +282,23 @@ static void Game_HandleKeys() {
 	if (Keyboard_GetState(KEY_ESC, FALSE, TRUE)) exit(0);
 	if (Keyboard_GetState('p', FALSE, TRUE)) {
 		paused = !paused;
+		pause_start = !pause_start;
+		if (pause_start){
+			pause_start_time = glutGet(GLUT_ELAPSED_TIME)/1000.00;
+		}
+		else {
+			pause_end_time = glutGet(GLUT_ELAPSED_TIME)/1000;
+			pause_duration = pause_end_time - pause_start_time;
+			total_paused_time = total_paused_time + pause_duration;
+		}
+		
 	}
 	if (Keyboard_GetState(KEY_F1, FALSE, TRUE)) {
 		Game_Start();
 	}
 
-	if (paused || game_end || down_count > 0) return;
+	if (paused ||  down_count > 0 || game_end) return;
+	
 
 	if (Keyboard_GetState(KEY_F2, FALSE, TRUE)) {
 		if (glIsEnabled(GL_TEXTURE_2D)) {
@@ -835,9 +880,42 @@ static void Game_Render_Overlay(int playerNum) {
 			playerList[playerNum].lapNumber + 1 == totalLaps ? "(FINAL LAP!)" : "");
 	}
 
+	if (game_end){
+		handle_end_of_game(playerNum);
+		}
+
 	glColor3d(0, 1, 0);
 	text_output(2, 50, playerList[playerNum].centerText);
 
+	glColor3f(1, 0, 1);
+	if ((game_started == 1) && (count_finished == 0)) {
+		if (!paused && !game_end) {
+			time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00;
+		}
+		time_since_start = time_now - game_start_time - total_paused_time;
+		down_count = 5-(int)time_since_start;
+		if ((down_count > 0)&& (!paused)){
+			text_output(45, 90, "%d", down_count);	
+		}
+		if ((down_count == 0)&&(!game_end)){
+			text_output(45, 90, "GO!!!");
+		}
+		if ((down_count<0) && (!game_end)){
+			if (!paused){
+				time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00 - 6;
+			}
+			time_since_start = time_now - game_start_time - total_paused_time;
+			game_count_down = time_limit - time_since_start;
+			text_output(78, 92, "Time Left: %.2f", game_count_down);
+			if (game_count_down <= 0){
+				game_end = 1;
+		
+			}//end of time_limit
+		}//down_count <0
+	}//if game_started and not game_end
+	 
+	
+	
 
 	if (paused || game_end) {
 		glEnable(GL_BLEND);
@@ -853,48 +931,13 @@ static void Game_Render_Overlay(int playerNum) {
 
 		glColor4f(1, 1, 1, 1);
 
+		if (game_end) {
+		handle_end_of_game(playerNum);
+		return;
+		}
+
 		if (!game_end) {
 			text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSED");
-		}
-		else {
-			char *msg;
-			if (playerList[playerNum].lapNumber + 1 < totalLaps) {
-				msg = "YOU LOSE";
-			}
-			else {
-				msg = "YOU WIN";
-			}
-			text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, msg);
-		}
-	}
-}
-
-static void Game_Render_Full_Overlay() {
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	gluOrtho2D(0, 100, 0, 100);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	glColor3f(1, 0, 1);
-	if ((game_started == 1) && (count_finished == 0) && !game_end) {
-		if (!paused && !game_end) {
-			time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00;
-		}
-		time_since_start = time_now - game_start_time;
-		down_count = 5-(int)time_since_start;
-		if (down_count > 0){
-			text_output(45, 90, "%d", down_count);	
-		}
-		if (down_count == 0){
-			text_output(45, 90, "GO!!!");
-		}
-		if (down_count < 0){
-			if (!paused){
-				time_now = glutGet(GLUT_ELAPSED_TIME)/1000.00 - 6;
-			}
-			time_since_start = time_now - game_start_time;	
-			text_output(78, 92, "Time Elapsed: %.2f", time_since_start);
 		}
 	}
 }
@@ -906,5 +949,4 @@ void Game_Render() {
 		Game_Render_Scene(i);		/* Draw the scene (map) */
 		Game_Render_Overlay(i);		/* Draw the overlay for the player */
 	}
-	Game_Render_Full_Overlay();
 }
