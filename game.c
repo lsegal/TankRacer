@@ -38,7 +38,7 @@ static float time_since_start;
 static int down_count;
 static int count_finished;
 static float game_count_down; //the "time left" shown on screen
-const float time_limit = 240;//max allowed time for the game
+static float time_limit = 240;//max allowed time for the game
 
 static void Game_Run();
 static void Game_Render();
@@ -130,6 +130,9 @@ static void Game_Read_Config() {
 			}
 			if (!strcmp(key, "maxlaps")) {
 				totalLaps = atoi(val);
+			}
+			if (!strcmp(key, "timelimit")) {
+				time_limit = (float)atoi(val);
 			}
 		}
 	}
@@ -258,25 +261,19 @@ static void handle_end_of_game(int i) {
 	char *msg;
 	int playerNum = i;
 	if (playerList[playerNum].lapNumber + 1 < totalLaps) {
-			msg = "YOU LOSE";
-		}
-		else {
-			msg = "YOU WIN";
-		}
-		text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, msg);
+		msg = "YOU LOSE";
+	}
+	else {
+		msg = "YOU WIN";
+	}
+	text_output2(42, 50, GLUT_BITMAP_TIMES_ROMAN_24, msg);
 
-		if (game_count_down>0){
-			text_output(78, 92, "Time Left: %.2f", game_count_down);
-		}
-		else {
-			text_output(78, 92, "Time Left: 0.00");
-		}
-			text_output(45, 92, "GAME OVER");
-			text_output(40, 42, "Press F1 to restart.");
-		return;
-
-
+	if (game_count_down <= 0) {
+		text_output(45, 92, "GAME OVER");
+		text_output(40, 42, "Press F1 to restart.");
+	}
 }
+
 static void Game_HandleKeys() {
 	int i, driving = 0, turning = 0, d;
 	Object *obj;
@@ -907,13 +904,13 @@ static void Game_Render_Overlay(int playerNum) {
 			}
 			time_since_start = time_now - game_start_time - total_paused_time;
 			game_count_down = time_limit - time_since_start;
-			text_output(78, 92, "Time Left: %.2f", game_count_down);
+			text_output(72, 92, "Time Left: %d mins %d secs", (int)(game_count_down / 60), (int)game_count_down % 60);
 			if (game_count_down <= 0){
 				game_end = 1;
 		
-			}//end of time_limit
-		}//down_count <0
-	}//if game_started and not game_end
+			} //end of time_limit
+		} //down_count <0
+	} //if game_started and not game_end
 	 
 	
 	

@@ -21,3 +21,4 @@ gravity 0.05
 ; Game settings
 maxplayers 2
 maxlaps    3
+timelimit  240
